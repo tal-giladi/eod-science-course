@@ -327,7 +327,7 @@ print(dynamic_pressure(np.array([10, 100, 473, 1000])))  # 0.348 30.9 ~473 1463 
 (say $p_s = 5$ kPa), dynamic pressure is almost irrelevant to a wall but still relevant to a person.
 
 *Answer.* (a) $q/p_s = p_s/(2.8p_0+0.4p_s) = 0.1$ → $p_s(1-0.04) = 0.28p_0$ → $p_s = 29.6$ kPa.
-(b) $q = 25/(283.7+2) = 0.088$ kPa — 1.8 % of $p_s$, negligible compared to the reflected 10 kPa on
+(b) $q = 2.5\cdot25/(709.3+5) = 0.088$ kPa — 1.8 % of $p_s$, negligible compared to the reflected 10 kPa on
 a wall. A person is not loaded by distributed pressure causing structural failure but by
 *translation*: the net force on a small body is the drag term (the reflected pressure clears in
 well under a millisecond, §6), and even modest winds acting for tens of ms can topple — the
@@ -402,13 +402,12 @@ def clearing_time(height, width, U):
     S = min(height, width / 2)
     return 3 * S / U
 
-def front_face_load(t, ps_t, q_t, pr_peak, tc, Cd=1.0):
-    """Simplified front-face overpressure: reflected peak decaying linearly to ps+Cd*q over tc.
-    ps_t, q_t: callables giving incident overpressure and dynamic pressure at time t (t=0 at arrival)."""
-    stag = ps_t(t) + Cd * q_t(t)
-    if t < tc:
-        return pr_peak + (stag - pr_peak) * t / tc if pr_peak > stag else stag
-    return stag
+def front_face_load(t, pr_t, ps_t, q_t, tc, Cd=1.0):
+    """Simplified front-face overpressure (t = 0 at arrival; works on NumPy arrays).
+    pr_t, ps_t, q_t: reflected, incident and dynamic pressure histories as functions of t.
+    Blends linearly from the reflected history to the stagnation history p_s + Cd*q over tc."""
+    w = np.minimum(t / tc, 1.0)
+    return pr_t(t) + (ps_t(t) + Cd * q_t(t) - pr_t(t)) * w
 ```
 
 <details class="answer"><summary>Exercise 5 — then reveal</summary>
@@ -468,7 +467,7 @@ Ambient is sea level. Sim D's free-air curves (Kinney–Graham fit, introduced i
 1. **Wall.** $S=\min(3,6)=3$ m, $t_c = 9/364 = 24.8$ ms (UFC form with $C_r\approx355$ m/s in the
    reflected region: 22.5 ms). Both exceed $t_d=8.5$ ms, so the wall sees the full reflected pulse:
    peak 35.8 kPa, reflected impulse (same Friedlander shape, Sim D's approximation) ≈ 129 kPa·ms
-   versus 61 kPa·ms incident. **Reflection more than doubles the impulse.**
+   (≈ 122 kPa·ms if the slow clearing is blended in as in §6) versus 61 kPa·ms incident. **Reflection more than doubles the impulse.**
 2. **Post.** $S=0.15$ m, $t_c = 1.2$ ms ≪ 8.5 ms. The front face sees 35.8 kPa for ≈ 1 ms, then
    ≈ 17.7 kPa. The *net* horizontal force, once the wave has enveloped the post, is drag:
    $F\approx 1.2\cdot 0.97\,\text{kPa}\cdot0.6\,\text{m}^2 \approx 0.7$ kN at peak — modest, because at
@@ -516,12 +515,12 @@ Ambient is sea level. Sim D's free-air curves (Kinney–Graham fit, introduced i
 
 <details class="answer"><summary>Answers</summary>
 
-1. Invert $p_r(p_s)=250$: $p_s \approx 93.6$ kPa ($C_r = 2.67$); $M_s = \sqrt{1+\tfrac67\cdot0.924} = 1.3446$,
-   $U = 457.6$ m/s; $q = 2.5\cdot93.6^2/(709.3+93.6) = 27.3$ kPa.
+1. Invert $p_r(p_s)=250$ (bisection): $p_s \approx 92.8$ kPa ($C_r = 2.69$); $M_s = \sqrt{1+\tfrac67\cdot0.916} = 1.336$,
+   $U = 454.7$ m/s; $q = 2.5\cdot92.8^2/(709.3+92.8) = 26.8$ kPa.
 2. $T = 1.9994$ → 4.0 kPa in the water; $\tau_I = 1.1\times10^{-3}$. Pressure doubles but water
    particle velocity is ~3600× smaller than in air for the same pressure, so the energy flux
    $p\,u$ is tiny. No contradiction: pressure and energy are different quantities.
-3. $U = 340.3\sqrt{1+0.857\cdot0.296} = 380$ m/s. Façade: $S=3$ m → $t_c = 23.7$ ms ≳ $t_d$:
+3. $U = 340.3\sqrt{1+0.857\cdot0.296} = 381$ m/s. Façade: $S=3$ m → $t_c = 23.6$ ms ≳ $t_d$:
    reflection-dominated. Window pane in a large wall: the *wall* sets the clearing geometry, not the
    pane — the pane sees the full reflected pulse. Robot chassis: $S=0.3$ m → 2.4 ms ≪ 20 ms:
    drag-dominated (for net force), with a short reflected spike on sensors facing the source.
@@ -543,12 +542,14 @@ range $R$, including reflection and clearing.
 - **Constraints:** incident wave: Friedlander with $p_s$, $t_d$, $b$ from a port of
   `predict()` in `sims/common/blast.js` (Kinney–Graham fits); $q(t)$: assume
   $q(t)=q_{\text{peak}}(1-t/t_d)^2e^{-2bt/t_d}$ (a common simplification — state it); reflected
-  pulse decays linearly to $p_s(t)+C_dq(t)$ over $t_c$; NumPy only.
+  history = Friedlander at $p_r$ with the same $t_d, b$ (Sim D's approximation), blended linearly
+  into $p_s(t)+C_dq(t)$ over $t_c$ as in `front_face_load`; NumPy only.
 - **Expected behaviour:** $i_{\text{eff}}\to i_r$ as target size → ∞; $i_{\text{eff}}\to$ stagnation
   impulse as size → 0; monotonic in between.
 - **Test cases:** (i) $W=10$, $R=15$, $H=3$, $B=12$ → $p_r = 35.8$ kPa, $t_c = 24.8$ ms,
-  $i_{\text{eff}}$ within 2 % of $i_r\approx129$ kPa·ms; (ii) same wave, $H=2$, $B=0.3$ →
-  $t_c=1.24$ ms and $i_{\text{eff}}$ within 15 % of the incident impulse; (iii) $p_s\to0$ limit gives
+  $i_{\text{eff}}\approx122$ kPa·ms, i.e. ≈ 95 % of $i_r\approx129$ kPa·ms; (ii) same wave, $H=2$,
+  $B=0.3$ → $t_c=1.24$ ms and $i_{\text{eff}}\approx73$ kPa·ms ≈ 1.2× the incident 60.5 kPa·ms
+  (the cleared reflected spike adds ≈ 10 kPa·ms, the $q$ term ≈ 2 kPa·ms); (iii) $p_s\to0$ limit gives
   $C_r\to2$.
 - **Extensions:** replace $3S/U$ with the UFC form (compute $C_r$ from the reflected-state
   temperature via Rankine–Hugoniot); validate against Sim D probe traces for the Wall scene by
@@ -596,9 +597,9 @@ in [01.6](lessons/stage-01/lesson-06.md).
    so $q = \frac{2\rho_1a_1^2(x-1)^2}{(\gamma+1)[(\gamma-1)x+2]}$. Use $\rho_1a_1^2=\gamma p_0$ and
    $x-1 = \frac{\gamma+1}{2\gamma}\frac{p_s}{p_0}$, $(\gamma-1)x+2 = \frac{(\gamma+1)[2\gamma p_0+(\gamma-1)p_s]}{2\gamma p_0}$.
    Substituting: $q = \frac{p_s^2}{2\gamma p_0+(\gamma-1)p_s}$. ∎
-4. Solve $p_r(p_s)=1000$: $p_s\approx 266$ kPa ($C_r\approx3.76$). $q = 2.5\cdot266^2/(709.3+266)\approx181$ kPa.
+4. Solve $p_r(p_s)=1000$: $p_s\approx 272.7$ kPa ($C_r\approx3.67$). $q = 2.5\cdot272.7^2/(709.3+272.7)\approx189$ kPa.
    Sonic flow behind the incident shock needs $p_s\gtrsim387$ kPa, so the flow is still subsonic
-   ($M_2\approx0.84$).
+   ($M_2\approx0.85$).
 
 </details>
 

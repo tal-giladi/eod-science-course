@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sim H · Recognition Trainer</title>
+<link rel="stylesheet" href="../common/sim.css">
+<style>
+  .layout { grid-template-columns: 1fr 380px; }
+  .opt { display: block; margin: 3px 0; font-size: 13px; color: var(--ink); }
+  .opt input { margin-right: 6px; }
+  .ctx { font-size: 13px; line-height: 1.5; }
+  .ctx b { color: var(--cyan); }
+  @media (max-width: 1000px) { .layout { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="layout">
+  <div class="panel">
+    <h2>Item <span id="num"></span> · synthetic technical illustration <span class="hint">(all objects are generic and fictional)</span></h2>
+    <canvas id="img"></canvas>
+    <div class="ctx" id="ctx" style="margin-top:8px"></div>
+  </div>
+  <div class="panel">
+    <h2>1 · Category</h2>
+    <div id="cats"></div>
+    <h2 style="margin-top:10px">2 · Condition / state</h2>
+    <div id="states"></div>
+    <h2 style="margin-top:10px">3 · Response category</h2>
+    <div id="resps"></div>
+    <h2 style="margin-top:10px">4 · Confidence in your category</h2>
+    <input type="range" id="conf" min="0.2" max="1" step="0.05" value="0.7"><span class="mono" id="confv">0.70</span>
+    <div class="row" style="margin-top:10px"><button class="primary" id="submit">Commit answer</button><span class="hint" id="prog"></span></div>
+    <div class="log" id="fb" style="max-height:260px;margin-top:8px"></div>
+  </div>
+</div>
+<script src="../common/eod.js"></script>
+<script>
+(function () {
+  'use strict';
+  var U = EOD.util, level;
+  var diff = EOD.ui.difficultySelect(function (v) { location.href = location.pathname + '?level=' + v; });
+  level = diff.value;
+  EOD.ui.header('H', 'Recognition Trainer', 'category-level recognition · condition · professional response', [U.el('span', { class: 'hint' }, 'difficulty'), diff]);
+  var seed = EOD.seedFromUrl(), R = EOD.rng(seed);
+
+  var CATS = [
+    ['projected', 'Projected munition — artillery-type projectile'],
+    ['mortar', 'Projected munition — mortar-type bomb'],
+    ['rocket', 'Projected munition — rocket-type'],
+    ['grenade', 'Thrown munition — grenade-type'],
+    ['submunition', 'Dropped munition — submunition-type'],
+    ['bomb', 'Dropped munition — aircraft-bomb-type'],
+    ['mine', 'Placed munition — landmine-type'],
+    ['cache', 'Abandoned ammunition / store'],
+    ['suspicious', 'Suspicious item (possible improvised hazard)'],
+    ['benign', 'Not an explosive hazard (look-alike)']
+  ];
+  var STATES = [['unfired', 'Appears unfired / unused'], ['fired', 'Indicators of having been fired/dropped/deployed'], ['unknown', 'Cannot determine — treat state as unknown'], ['na', 'Not applicable']];
+  var RESPS = [
+    ['uxo', 'Do not touch · mark · withdraw · report to EOD authority'],
+    ['minefield', 'Stop · retrace known-safe route · mark · report to mine-action authority'],
+    ['ied', 'Do not touch · isolate & evacuate to stand-off · police bomb-disposal response'],
+    ['cache', 'Secure area · no handling · report for ammunition-technical assessment'],
+    ['none', 'No explosive-hazard response needed']
+  ];
+  function radios(host, name, arr) { host.innerHTML = arr.map(function (a) { return '<label class="opt"><input type="radio" name="' + name + '" value="' + a[0] + '">' + a[1] + '</label>'; }).join(''); }
+  radios(U.$('#cats'), 'cat', CATS); radios(U.$('#states'), 'state', STATES); radios(U.$('#resps'), 'resp', RESPS);
+  U.$('#conf').oninput = function () { U.$('#confv').textContent = (+this.value).toFixed(2); };
+
+  // ------------------------------------------------------------------ scenario generation
+  var LV = { Beginner: { n: 10, burial: 0, corr: 0.1, occl: 0, ambiguous: 0 }, Intermediate: { n: 12, burial: 0.3, corr: 0.35, occl: 0.15, ambiguous: 0.1 },
+    Advanced: { n: 14, burial: 0.55, corr: 0.6, occl: 0.3, ambiguous: 0.2 }, Expert: { n: 16, burial: 0.7, corr: 0.8, occl: 0.45, ambiguous: 0.3 } }[level];
+  var PLACES = ['farm field after ploughing', 'construction excavation', 'riverbank after a flood', 'woodland near a former firing range', 'roadside verge', 'beach at low tide', 'rubble of a damaged building', 'railway station concourse', 'car park beside a stadium', 'abandoned military depot'];
+  var FINDERS = ['a farmer', 'a construction crew', 'a patrol', 'a member of the public', 'a survey team', 'station staff'];
+
+  function makeItem(k) {
+    var types = ['projected', 'mortar', 'rocket', 'grenade', 'submunition', 'bomb', 'mine', 'cache', 'suspicious', 'benign'];
+    var cat = types[k % types.length];
+    if (k >= types.length) cat = R.pick(types);
+    var it = { cat: cat, burial: R.uniform(0, LV.burial), corr: R.uniform(0, LV.corr), occl: R.bernoulli(LV.occl) ? R.uniform(0.2, 0.5) : 0, rot: cat === 'cache' ? R.uniform(-0.05, 0.05) : R.uniform(-0.5, 0.5), scale: R.uniform(0.8, 1.2) };
+    it.fired = ['projected', 'mortar', 'rocket', 'submunition', 'bomb'].indexOf(cat) >= 0 ? R.bernoulli(0.6) : false;
+    it.ambiguous = R.bernoulli(LV.ambiguous) && cat !== 'benign';
+    it.place = cat === 'suspicious' ? R.pick(['railway station concourse', 'car park beside a stadium', 'roadside verge']) :
+      cat === 'mine' ? R.pick(['farm field after ploughing', 'roadside verge', 'woodland near a former firing range']) :
+      cat === 'cache' ? R.pick(['abandoned military depot', 'woodland near a former firing range']) : R.pick(PLACES);
+    it.finder = R.pick(FINDERS);
+    it.len = { projected: R.uniform(0.35, 0.8), mortar: R.uniform(0.3, 0.6), rocket: R.uniform(0.8, 1.6), grenade: R.uniform(0.08, 0.13), submunition: R.uniform(0.06, 0.15),
+      bomb: R.uniform(1.2, 2.6), mine: R.uniform(0.08, 0.32), cache: R.uniform(0.8, 1.6), suspicious: R.uniform(0.3, 0.6), benign: R.uniform(0.2, 0.9) }[cat];
+    it.benignKind = R.pick(['gas cylinder', 'pipe section with end caps', 'fire extinguisher', 'vehicle shock absorber', 'thermos flask']);
+    it.hot = cat === 'suspicious' ? { hidden: R.bernoulli(0.6), obvious: R.bernoulli(0.5), untypical: R.bernoulli(0.8) } : null;
+    return it;
+  }
+  var items = []; for (var k = 0; k < LV.n; k++) items.push(makeItem(k));
+  R.shuffle(items);
+  var idx = 0, answers = [];
+
+  // expected answers
+  function truth(it) {
+    var state = it.cat === 'benign' || it.cat === 'suspicious' || it.cat === 'cache' ? 'na' :
+      it.cat === 'mine' || it.cat === 'grenade' ? 'unknown' : (it.fired ? 'fired' : 'unfired');
+    if (it.ambiguous && state !== 'na') state = 'unknown';
+    var resp = { projected: 'uxo', mortar: 'uxo', rocket: 'uxo', grenade: 'uxo', submunition: 'uxo', bomb: 'uxo', mine: 'minefield', cache: 'cache', suspicious: 'ied', benign: 'none' }[it.cat];
+    return { cat: it.cat, state: state, resp: resp };
+  }
+  function explain(it) {
+    var t = truth(it), m = {
+      projected: 'Cylindrical body, ogival nose and a driving band near the base are the generic features of a spin-stabilised projectile.' + (it.fired ? ' Engraving on the driving band indicates it was fired — its fuze may have passed through its arming sequence, so it must be assumed armed.' : ' A smooth, un-engraved driving band suggests unfired — but "unfired" never means "safe".'),
+      mortar: 'Tear-drop body with a tail boom and fins: fin-stabilised, typical of mortar-type bombs.' + (it.fired ? ' Deformation/impact signs suggest it was fired and failed to function.' : ''),
+      rocket: 'Long slender body, rear fins and a nozzle: rocket-type. Residual propellant is an additional hazard.' + (it.fired ? ' Scorching around the nozzle suggests it was launched.' : ''),
+      grenade: 'Small ovoid thrown-munition shape. Whether it was thrown cannot be told reliably from an illustration — state unknown.',
+      submunition: 'Small munition with a stabilising device, found in a spread pattern: submunition-type. These have notoriously sensitive failure states and often lie in large numbers.',
+      bomb: 'Large streamlined body with a finned tail and suspension lugs: aircraft-bomb-type. Legacy items like this trigger large evacuations (see case study cs08).',
+      mine: 'Flat disc partially buried in a route or field: landmine-type. Where there is one there are often more — the response is about the area, not only the item.',
+      cache: 'Stacked containers of munitions in a disused store: abandoned ammunition. Deterioration makes the whole stack a hazard; it needs an ammunition-technical assessment.',
+      suspicious: 'Unattended container in a crowded public place with indicators (hidden/obviously suspicious/not typical). Recognition cannot establish what is inside — the response is isolation at stand-off distance and specialist police response.',
+      benign: 'This is a ' + it.benignKind + ' — a common look-alike. Recognition confidence should come from features and context, and when real doubt remains the professional answer is still to report.'
+    }[it.cat];
+    if (it.ambiguous && t.state === 'unknown') m += ' Heavy corrosion/burial here hides the state indicators: the correct assessment is "unknown", which means treating it as the more hazardous state.';
+    return m;
+  }
+
+  // ------------------------------------------------------------------ drawing (generic silhouettes, technical-illustration style)
+  var cv = U.$('#img');
+  function draw(it) {
+    var g = EOD.hidpi(cv, 420), ctx = g.ctx, W = g.w, H = g.h;
+    // ground / scene background
+    var outdoor = ['railway station concourse', 'car park beside a stadium'].indexOf(it.place) < 0;
+    var grd = ctx.createLinearGradient(0, 0, 0, H);
+    if (outdoor) { grd.addColorStop(0, '#131a14'); grd.addColorStop(1, '#1d231a'); } else { grd.addColorStop(0, '#15181d'); grd.addColorStop(1, '#22262d'); }
+    ctx.fillStyle = grd; ctx.fillRect(0, 0, W, H);
+    var rr = EOD.rng(Math.floor(it.rot * 1e6) + 17);
+    for (var n = 0; n < 900; n++) { ctx.fillStyle = 'rgba(' + (outdoor ? '120,110,90' : '140,140,150') + ',' + rr.uniform(0.02, 0.09) + ')'; ctx.fillRect(rr.uniform(0, W), rr.uniform(0, H), rr.uniform(1, 3), rr.uniform(1, 3)); }
+    if (!outdoor) { ctx.strokeStyle = 'rgba(255,255,255,.05)'; for (var x = 0; x < W; x += 60) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); } }
+    // scale: pixels per metre
+    var ppm = Math.min(W * 0.62 / Math.max(it.len, 0.12), 2600) * (it.cat === 'bomb' || it.cat === 'rocket' || it.cat === 'cache' ? 1 : 0.9);
+    ctx.save(); ctx.translate(W * 0.5, H * 0.52); ctx.rotate(it.rot);
+    var metal = function (x0, y0, x1, y1, base) {
+      var gr = ctx.createLinearGradient(x0, y0, x1, y1);
+      var c = base || [150, 156, 160];
+      var cr = it.corr;
+      var mix = function (a, b) { return Math.round(a * (1 - cr) + b * cr); };
+      var cc = [mix(c[0], 120), mix(c[1], 78), mix(c[2], 48)];
+      gr.addColorStop(0, 'rgb(' + cc.map(function (v) { return Math.min(255, v + 50); }).join(',') + ')');
+      gr.addColorStop(0.45, 'rgb(' + cc.join(',') + ')');
+      gr.addColorStop(1, 'rgb(' + cc.map(function (v) { return Math.max(0, v - 70); }).join(',') + ')');
+      return gr;
+    };
+    ctx.lineWidth = 1.4; ctx.strokeStyle = '#d8e0ea';
+    var L = it.len * ppm, D;
+    switch (it.cat) {
+      case 'projected':
+        D = L * 0.26; ctx.fillStyle = metal(0, -D / 2, 0, D / 2, [120, 125, 110]);
+        ctx.beginPath(); ctx.moveTo(-L / 2, -D * 0.42); ctx.lineTo(-L / 2 + L * 0.08, -D / 2); ctx.lineTo(L * 0.12, -D / 2);
+        ctx.quadraticCurveTo(L * 0.42, -D * 0.45, L / 2, 0); ctx.quadraticCurveTo(L * 0.42, D * 0.45, L * 0.12, D / 2);
+        ctx.lineTo(-L / 2 + L * 0.08, D / 2); ctx.lineTo(-L / 2, D * 0.42); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = it.corr > 0.5 ? '#6d5a3f' : '#b0793f'; ctx.fillRect(-L / 2 + L * 0.12, -D / 2 - 2, L * 0.05, D + 4); ctx.strokeRect(-L / 2 + L * 0.12, -D / 2 - 2, L * 0.05, D + 4);
+        if (it.fired && !it.ambiguous) { ctx.strokeStyle = '#3a2a1a'; for (var e = 0; e < 7; e++) { var ex = -L / 2 + L * 0.12 + e * L * 0.008; ctx.beginPath(); ctx.moveTo(ex, -D / 2 - 2); ctx.lineTo(ex + L * 0.02, D / 2 + 2); ctx.stroke(); } ctx.strokeStyle = '#d8e0ea'; }
+        break;
+      case 'mortar':
+        D = L * 0.3; ctx.fillStyle = metal(0, -D / 2, 0, D / 2, [95, 110, 85]);
+        ctx.beginPath(); ctx.moveTo(L / 2, 0); ctx.bezierCurveTo(L * 0.4, -D * 0.6, L * 0.0, -D * 0.6, -L * 0.15, -D * 0.12); ctx.lineTo(-L * 0.38, -D * 0.1); ctx.lineTo(-L * 0.38, D * 0.1); ctx.lineTo(-L * 0.15, D * 0.12);
+        ctx.bezierCurveTo(L * 0.0, D * 0.6, L * 0.4, D * 0.6, L / 2, 0); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = metal(0, -D, 0, D, [90, 95, 90]);
+        [-1, 1].forEach(function (sg) { ctx.beginPath(); ctx.moveTo(-L * 0.3, sg * D * 0.1); ctx.lineTo(-L * 0.5, sg * D * 0.45); ctx.lineTo(-L * 0.5, sg * D * 0.1); ctx.closePath(); ctx.fill(); ctx.stroke(); });
+        ctx.strokeRect(-L * 0.5, -D * 0.1, L * 0.12, D * 0.2);
+        break;
+      case 'rocket':
+        D = L * 0.09; ctx.fillStyle = metal(0, -D / 2, 0, D / 2, [110, 118, 100]);
+        ctx.beginPath(); ctx.moveTo(-L / 2, -D / 2); ctx.lineTo(L * 0.35, -D / 2); ctx.quadraticCurveTo(L * 0.47, -D * 0.4, L / 2, 0); ctx.quadraticCurveTo(L * 0.47, D * 0.4, L * 0.35, D / 2); ctx.lineTo(-L / 2, D / 2); ctx.closePath(); ctx.fill(); ctx.stroke();
+        [-1, 1].forEach(function (sg) { ctx.beginPath(); ctx.moveTo(-L * 0.36, sg * D / 2); ctx.lineTo(-L * 0.5, sg * D * 1.8); ctx.lineTo(-L * 0.5, sg * D / 2); ctx.closePath(); ctx.fill(); ctx.stroke(); });
+        if (it.fired && !it.ambiguous) { var gg = ctx.createRadialGradient(-L / 2, 0, 1, -L / 2, 0, D * 2); gg.addColorStop(0, 'rgba(20,15,10,.9)'); gg.addColorStop(1, 'rgba(20,15,10,0)'); ctx.fillStyle = gg; ctx.fillRect(-L / 2 - D * 2, -D * 2, D * 3, D * 4); }
+        break;
+      case 'grenade':
+        D = L * 0.62; ctx.fillStyle = metal(-D, -D, D, D, [85, 100, 70]);
+        ctx.beginPath(); ctx.ellipse(0, 0, L / 2, D / 2, 0, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = metal(0, 0, 0, 1, [140, 140, 130]); ctx.fillRect(L * 0.42, -D * 0.18, L * 0.18, D * 0.36); ctx.strokeRect(L * 0.42, -D * 0.18, L * 0.18, D * 0.36);
+        break;
+      case 'submunition':
+        D = L * 0.55; ctx.fillStyle = metal(0, -D / 2, 0, D / 2, [150, 130, 70]);
+        ctx.beginPath(); ctx.rect(-L / 2, -D / 2, L * 0.75, D); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(L * 0.25, -D / 2); ctx.quadraticCurveTo(L / 2, 0, L * 0.25, D / 2); ctx.fill(); ctx.stroke();
+        ctx.strokeStyle = '#e6e0c8'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-L / 2, 0); ctx.bezierCurveTo(-L * 1.2, -D, -L * 1.6, D, -L * 2.2, 0); ctx.stroke(); ctx.lineWidth = 1.4; ctx.strokeStyle = '#d8e0ea';
+        break;
+      case 'bomb':
+        D = L * 0.2; ctx.fillStyle = metal(0, -D / 2, 0, D / 2, [95, 105, 90]);
+        ctx.beginPath(); ctx.moveTo(L / 2, 0); ctx.bezierCurveTo(L * 0.45, -D * 0.55, L * 0.2, -D / 2, 0, -D / 2); ctx.lineTo(-L * 0.25, -D / 2); ctx.lineTo(-L * 0.4, -D * 0.25);
+        ctx.lineTo(-L * 0.4, D * 0.25); ctx.lineTo(-L * 0.25, D / 2); ctx.lineTo(0, D / 2); ctx.bezierCurveTo(L * 0.2, D / 2, L * 0.45, D * 0.55, L / 2, 0); ctx.fill(); ctx.stroke();
+        ctx.strokeRect(-L / 2, -D * 0.55, L * 0.14, D * 1.1);
+        ctx.fillStyle = '#5a6068'; [-0.05, 0.12].forEach(function (p) { ctx.fillRect(L * p, -D / 2 - D * 0.1, D * 0.08, D * 0.1); });
+        break;
+      case 'mine':
+        D = L * 0.35; ctx.fillStyle = metal(0, -D, 0, D, [70, 85, 60]);
+        ctx.beginPath(); ctx.ellipse(0, 0, L / 2, D / 2, 0, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.ellipse(0, -D * 0.1, L * 0.18, D * 0.14, 0, 0, 2 * Math.PI); ctx.stroke();
+        break;
+      case 'cache':
+        for (var r2 = 0; r2 < 3; r2++) for (var c2 = 0; c2 < 4 - r2; c2++) {
+          var bw = L / 4.2, bh = bw * 0.45, bx = -L / 2 + c2 * bw * 1.02 + r2 * bw * 0.5, by = L * 0.15 - r2 * bh * 1.02;
+          ctx.fillStyle = metal(bx, by, bx, by + bh, [80, 95, 70]); ctx.fillRect(bx, by, bw, bh); ctx.strokeRect(bx, by, bw, bh);
+          ctx.fillStyle = 'rgba(230,220,180,.6)'; ctx.fillRect(bx + bw * 0.1, by + bh * 0.3, bw * 0.4, bh * 0.15);
+        }
+        break;
+      case 'suspicious':
+        D = L * 0.6; ctx.fillStyle = 'rgb(' + [60, 50, 45].join(',') + ')';
+        ctx.beginPath(); ctx.moveTo(-L / 2, D / 2); ctx.lineTo(-L * 0.45, -D * 0.3); ctx.quadraticCurveTo(0, -D * 0.55, L * 0.45, -D * 0.3); ctx.lineTo(L / 2, D / 2); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(-L * 0.2, -D * 0.42); ctx.quadraticCurveTo(0, -D, L * 0.2, -D * 0.42); ctx.stroke();
+        break;
+      case 'benign':
+        D = L * 0.22; ctx.fillStyle = metal(0, -D / 2, 0, D / 2, it.benignKind === 'fire extinguisher' ? [170, 40, 40] : it.benignKind === 'gas cylinder' ? [60, 90, 150] : [140, 140, 140]);
+        ctx.beginPath(); ctx.moveTo(-L / 2, -D / 2); ctx.lineTo(L * 0.35, -D / 2); ctx.quadraticCurveTo(L / 2, -D / 2, L / 2, 0); ctx.quadraticCurveTo(L / 2, D / 2, L * 0.35, D / 2); ctx.lineTo(-L / 2, D / 2); ctx.closePath(); ctx.fill(); ctx.stroke();
+        if (it.benignKind === 'pipe section with end caps') { ctx.strokeRect(-L / 2 - 4, -D / 2 - 3, 10, D + 6); ctx.strokeRect(L / 2 - 6, -D / 2 - 3, 10, D + 6); }
+        else { ctx.fillStyle = '#333'; ctx.fillRect(L / 2, -D * 0.12, L * 0.08, D * 0.24); }
+        break;
+    }
+    ctx.restore();
+    // burial: soil overlay on the lower part
+    if (it.burial > 0.05) {
+      ctx.fillStyle = outdoor ? 'rgba(40,34,24,.96)' : 'rgba(45,45,50,.9)';
+      ctx.beginPath(); var yb = H * (0.52 + 0.25 * (1 - it.burial) - 0.05);
+      ctx.moveTo(0, yb); for (var xx = 0; xx <= W; xx += 20) ctx.lineTo(xx, yb + Math.sin(xx * 0.05 + it.rot * 10) * 6); ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.fill();
+    }
+    if (it.occl > 0) { ctx.fillStyle = 'rgba(30,60,30,.85)'; for (var q = 0; q < 40; q++) { ctx.beginPath(); ctx.ellipse(W * (0.3 + 0.5 * Math.random()), H * (0.35 + 0.35 * Math.random()), 8 + 30 * it.occl, 3 + 8 * it.occl, Math.random() * 3, 0, 2 * Math.PI); ctx.fill(); } }
+    // scale bar
+    var bar = it.len > 1 ? 0.5 : it.len > 0.3 ? 0.1 : 0.05, bpx = bar * ppm;
+    ctx.fillStyle = '#e6edf3'; ctx.fillRect(20, H - 30, bpx, 4); ctx.fillRect(20, H - 36, 2, 16); ctx.fillRect(20 + bpx - 2, H - 36, 2, 16);
+    ctx.font = '12px monospace'; ctx.fillText((bar * 100) + ' cm', 24 + bpx, H - 24);
+    ctx.fillStyle = '#7d8ba0'; ctx.fillText('SYNTHETIC · GENERIC · NOT TO SCALE WITH ANY REAL ITEM', W - 380, 18);
+  }
+
+  function context(it) {
+    var s = 'Reported by <b>' + it.finder + '</b> — location: <b>' + it.place + '</b>. ';
+    if (it.cat === 'suspicious') {
+      s += 'An unattended ' + R.pick(['holdall bag', 'rucksack', 'box']) + '. Staff report: ' +
+        [it.hot.hidden ? 'placed partly out of sight' : 'in plain view', it.hot.obvious ? 'unusual attachments visible' : 'nothing visibly unusual', it.hot.untypical ? 'not typical of lost property in this location' : 'resembles typical lost property'].join('; ') + '. ';
+    } else if (it.cat === 'mine') s += 'The finder stepped around it; similar disc shapes were reported nearby in the past. ';
+    else if (it.cat === 'submunition') s += 'Several similar small objects were seen scattered over tens of metres. ';
+    else if (it.cat === 'cache') s += 'The building has been disused for decades; some containers are split and stained. ';
+    else if (it.cat === 'benign') s += R.pick(['It was found near a scrapyard.', 'A resident thinks it may be a "shell".', 'It lies in a ditch beside a farm track.']) + ' ';
+    else s += R.pick(['The area saw fighting decades ago.', 'The site is near a former training range.', 'Nothing is known about its history.']) + ' ';
+    s += 'Condition: ' + (it.corr > 0.6 ? 'heavily corroded' : it.corr > 0.3 ? 'moderately corroded' : 'good') + (it.burial > 0.4 ? ', substantially buried' : it.burial > 0.05 ? ', partly buried' : '') + (it.occl ? ', partly obscured by vegetation' : '') + '.';
+    return s;
+  }
+
+  function show() {
+    var it = items[idx];
+    U.$('#num').textContent = (idx + 1) + ' / ' + items.length;
+    draw(it); U.$('#ctx').innerHTML = context(it);
+    document.querySelectorAll('input[type=radio]').forEach(function (r) { r.checked = false; });
+    U.$('#prog').textContent = answers.length + ' answered';
+  }
+  function val(name) { var e = document.querySelector('input[name=' + name + ']:checked'); return e ? e.value : null; }
+  U.$('#submit').onclick = function () {
+    var a = { cat: val('cat'), state: val('state'), resp: val('resp'), conf: +U.$('#conf').value };
+    if (!a.cat || !a.state || !a.resp) { alert('Answer all three parts first.'); return; }
+    var it = items[idx], t = truth(it);
+    var catOk = a.cat === t.cat, stOk = a.state === t.state || (a.state === 'unknown' && t.state !== 'na'), respOk = a.resp === t.resp;
+    // safety-critical errors: treating a hazard as not a hazard, or calling unknown state 'unfired'
+    var unsafe = (t.resp !== 'none' && a.resp === 'none') || (t.state === 'unknown' && a.state === 'unfired') || (t.state === 'fired' && a.state === 'unfired');
+    answers.push({ it: it, a: a, t: t, catOk: catOk, stOk: stOk, respOk: respOk, unsafe: unsafe });
+    U.$('#fb').insertAdjacentHTML('afterbegin', '<div>' + (idx + 1) + '. ' + (catOk ? '✓' : '✗') + ' category · ' + (stOk ? '✓' : '✗') + ' state · ' + (respOk ? '✓' : '✗') + ' response' + (unsafe ? ' <span style="color:var(--red)">· UNSAFE</span>' : '') + '</div>');
+    idx++;
+    if (idx < items.length) show(); else finish();
+  };
+
+  function finish() {
+    var n = answers.length, cat = answers.filter(function (x) { return x.catOk; }).length, st = answers.filter(function (x) { return x.stOk; }).length,
+      rs = answers.filter(function (x) { return x.respOk; }).length, unsafe = answers.filter(function (x) { return x.unsafe; }).length;
+    var brier = answers.reduce(function (s, x) { return s + Math.pow(x.a.conf - (x.catOk ? 1 : 0), 2); }, 0) / n;
+    var meanConf = answers.reduce(function (s, x) { return s + x.a.conf; }, 0) / n;
+    EOD.debrief.show({ title: 'Recognition trainer', seed: seed, level: level,
+      scores: [{ label: 'Category', value: 100 * cat / n, note: cat + '/' + n }, { label: 'State assessment', value: 100 * st / n, note: st + '/' + n },
+        { label: 'Response (safety-weighted)', value: U.clamp(100 * rs / n - 20 * unsafe, 0, 100), note: unsafe + ' unsafe call(s)' },
+        { label: 'Calibration', value: 100 * (1 - brier / 0.25 * 0.5), note: 'mean confidence ' + meanConf.toFixed(2) + ' vs accuracy ' + (cat / n).toFixed(2) }],
+      observed: answers.map(function (x, i) { return (i + 1) + '. ' + CATS.find(function (c) { return c[0] === x.t.cat; })[1] + ' — ' + x.it.place; }),
+      decided: answers.map(function (x, i) { return (i + 1) + '. you: ' + x.a.cat + ' / ' + x.a.state + ' / ' + x.a.resp + ' (conf ' + x.a.conf.toFixed(2) + ')'; }),
+      missed: answers.filter(function (x) { return !(x.catOk && x.stOk && x.respOk); }).map(function (x) { return '<b>' + x.t.cat + '</b>: ' + explain(x.it); }),
+      uncertainty: ['Illustrations are generic silhouettes; real recognition uses many more features and reference material (e.g. GICHD ordnance guides) — and qualified technicians still treat identification as provisional.',
+        'Burial, corrosion and occlusion remove exactly the features (bands, fins, markings) that indicate state.'],
+      reasoning: ['Category determines which organisation and which kind of response is appropriate; state (fired/unknown) determines how hazardous it must be assumed to be.',
+        'When state cannot be established, assume the more hazardous state. An "unknown" answer with a conservative response is professionally correct; a confident "unfired" is not.',
+        'For the public the rule is the same for every category: do not touch, move away, mark if possible, report.'],
+      physics: ['Driving bands engrave in the barrel (fired indicator); fins vs spin stabilisation reflect the delivery system — see 03.2.'],
+      engineering: ['Safety & arming devices are designed so that arming requires the launch environment; a fired-but-failed item may have completed arming — the S&A state machine in 03.2.'],
+      links: [{ href: EOD.COURSE + 'lessons/stage-03/lesson-01', text: '03.1 Taxonomy of explosive hazards' }, { href: EOD.COURSE + 'lessons/stage-03/lesson-02', text: '03.2 Conventional munitions & S&A' },
+        { href: EOD.COURSE + 'lessons/stage-03/lesson-03', text: '03.3 Mines, cluster munitions, legacy' }, { href: EOD.COURSE + 'lessons/stage-03/lesson-04', text: '03.4 Improvised hazards' }]
+    });
+  }
+  window.addEventListener('resize', function () { if (idx < items.length) draw(items[idx]); });
+  show();
+})();
+</script>
+</body>
+</html>
