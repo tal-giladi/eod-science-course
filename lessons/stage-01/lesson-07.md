@@ -561,13 +561,15 @@ temperature −5 °C (capacity 75 %). Drive speed averages 0.8 m/s.
 
 **Sim B (teleoperated robot).**
 
-1. Drive the robot away from the operator along an open path and record link quality versus
-   distance. Plot it against $\log d$: is the slope consistent with $-20$ dB/decade (free space)?
-2. Drive behind an obstacle. Estimate the extra loss in dB from the link read-out and compare with
-   the building-loss assumption in the worked example.
-3. Run the same task at two difficulty levels with different starting battery. Log battery
-   percentage against time, separate the drive, arm and lights contributions, and fit your §2
-   power-budget model to the simulator's consumption.
+1. Drive the robot away from the operator (OCU) along an open path and record the link-margin
+   read-out versus distance (use the 5 m map grid). Plot it against $\log d$: is the slope
+   consistent with $-20$ dB/decade (free space)?
+2. Drive behind a building. Estimate the extra loss in dB from the link-margin read-out (it also
+   counts obstructions) and compare with the building-loss assumption in the worked example.
+3. Separate the power contributions by timing the battery read-out over four one-minute segments:
+   parked and idle, driving straight at full speed, parked while moving the arm joints, parked with
+   lights on. Fit your §2 power-budget model (constant + drive + arm + lights) to the simulator's
+   consumption, then check it on a Beginner and an Intermediate run (different starting battery).
 4. Relate what happens at loss of link (latency, packet loss) to the link margin: at what margin do
    you first see degraded control?
 

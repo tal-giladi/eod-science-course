@@ -498,13 +498,18 @@ Checks: Pa·m³ = J ✓. $\tau$: (kg m⁻³)(J kg⁻¹ K⁻¹)(m)/(W m⁻² K⁻
 
 <div class="callout sim">
 
-**Sim I: Shock-tube explorer.** (1) Set a driver-to-driven pressure ratio of 10 with air on both
-sides. Before revealing, predict the temperature of the driver gas after the expansion fan passes,
-using §3 and the pressure it expands to (read it from the plot). Compare. (2) Replace the driver gas
-with helium ($\gamma = 5/3$, much lower molar mass) at the same pressure ratio. Does the shock get
-stronger or weaker? Explain with $a = \sqrt{\gamma RT}$ (01.3). (3) Compute the Brode energy per unit
-cross-section of your driver section and compare it with the kinetic energy in the flow behind the
-shock at a chosen time. Where is the rest?
+**Sim I: Shock-tube explorer.** (1) Open the *Shock tube* tab and set $p_L/p_R = 10$ with
+density ratio 1 (the same gas, $\gamma = 1.4$, at the same temperature on both sides). Before
+running, predict the temperature ratio of the driver gas after the expansion fan passes, using §3
+and the star pressure $p^*$ in the read-out. Then run and compare with $p/\rho$ read from the
+profiles in the expanded driver gas (for an ideal gas $T \propto p/\rho$). (2) Model a light driver
+gas such as helium (molar mass 4 vs 29): keep $p_L/p_R = 10$ and set $\rho_L/\rho_R \approx 0.14$.
+Does the shock Mach number $M_s$ get larger or smaller? Explain with $a = \sqrt{\gamma RT}$ (01.3).
+The sim keeps $\gamma = 1.4$ on both sides, so this isolates the molar-mass effect; say in one
+sentence what $\gamma = 5/3$ would add. (3) *Paper exercise with sim data:* in the solver's
+non-dimensional units (driver occupies $0 \le x < 0.5$), compute the Brode energy per unit
+cross-section of the driver and compare it with the kinetic energy $\int \tfrac12\rho u^2\,dx$
+estimated from the $\rho$ and $u$ profiles at a chosen time. Where is the rest?
 
 </div>
 

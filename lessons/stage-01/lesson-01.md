@@ -466,12 +466,13 @@ This is the reasoning skeleton of every P–I diagram. The two asymptotes of a P
 
 <div class="callout sim">
 
-**Sim D, structural-response (SDOF) and P–I panels.** (1) Choose a source and distance, read the
-peak overpressure and impulse on the waveform plot, and verify the impulse by estimating the area
-under the curve by eye (triangle approximation). How far off is the triangle, and why? (Compare
-Exercise 3.) (2) Keep the impulse roughly constant while changing the peak, by moving along a
-constant-$i$ line. Watch the SDOF response for a stiff (short-period) and a soft (long-period)
-structure. Which one cares about the peak? (3) Locate the two asymptotes of the P–I curve and name
+**Sim D, structural-response (SDOF) and P–I panels.** (1) Choose a yield and a standoff, read the
+peak overpressure and impulse from the live equations, and verify the impulse by estimating the
+area under the $p(t)$ curve by eye (triangle approximation). How far off is the triangle, and why?
+(Compare Exercise 3.) (2) Keep the impulse roughly constant while changing the peak, by moving the
+yield and standoff sliders together while watching $i$ in the live equations. Watch the SDOF
+response for the light cladding panel ($T = 5$ ms, short period) and the heavy wall ($T = 80$ ms,
+long period). Which one cares about the peak? (3) Locate the two asymptotes of the P–I curve and name
 them in the vocabulary of this lesson.
 
 </div>

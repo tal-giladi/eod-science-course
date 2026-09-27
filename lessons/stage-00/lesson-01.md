@@ -318,12 +318,14 @@ distinction. The metadata carries as much information as the image. Stage 9 will
 
 <div class="callout sim">
 
-**Sim A: Scene Assessment, tutorial mode.** Open the tutorial and do a first walk-through without
-trying to score well. As you go: (1) note every term in the interface that appears in this lesson's
-terminology table. (2) For each fictional object the tutorial shows, write down which category you
-would record it under *before* the tutorial tells you, and what context information you used.
-(3) Note which information the scene *does not* give you that the definitions need (for example,
-"was it used?"). You will return to Sim A in [00.2](lessons/stage-00/lesson-02.md) to look at roles
+**Sim A: Scene Assessment, Beginner level.** Sim A has no separate tutorial: open it at
+*Beginner* (most time and battery, least ambiguous evidence) and do a first walk-through without
+trying to score well. As you go: (1) note every term in the interface (item marks, cordon, control
+point, inspection types, debrief headings) that appears in this lesson's terminology table.
+(2) For each fictional item (I1, I2, …) you inspect with the robot camera, write down which
+category you would record it under *before* you open the debrief, and what context information
+(the call text, location, inspection result) you used. (3) Note which information the scene
+*does not* give you that the definitions need (for example, "was it used?"). You will return to Sim A in [00.2](lessons/stage-00/lesson-02.md) to look at roles
 and reporting.
 
 </div>

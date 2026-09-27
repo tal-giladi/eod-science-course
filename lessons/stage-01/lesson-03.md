@@ -293,8 +293,8 @@ data). Ambient: 101.3 kPa, 20 °C. What is the overpressure?
 
 **Sim D, wave field.** (1) *Open field*: place P1 near the source and P2 far away; compare peak
 $\Delta p/p_0$ and the pulse shapes — which one has the sharper front and why? (2) Toggle the
-*peak map*: where did the wave dissipate most? (3) Estimate the front speed from the frame counter
-and compare it to $a_0=\sqrt{\gamma}$ in the solver's non-dimensional units: is the near-field
+*peak map*: where did the wave dissipate most? (3) Estimate the front speed from the arrival times
+at P1 and P2 (probe traces, or the time read-out $t$ on the field) and compare it to $a_0=\sqrt{\gamma}$ in the solver's non-dimensional units: is the near-field
 front supersonic?
 
 </div>

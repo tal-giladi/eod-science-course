@@ -4,7 +4,7 @@
 
 **Prerequisites** [00.1 What EOD is](lessons/stage-00/lesson-01.md) (domains, terminology, life-cycle) · basic probability (Poisson processes) for §7.
 
-**Estimated time** 3 h (1.25 h theory · 0.5 h Sim A tutorial · 1.25 h data-model design exercise) · **Level** Beginner
+**Estimated time** 3 h (1.25 h theory · 0.5 h Sim A (Beginner) · 1.25 h data-model design exercise) · **Level** Beginner
 
 **Next** [01.1 Mechanics refresher](lessons/stage-01/lesson-01.md) (physics path), or [03.1 Hazard taxonomy](lessons/stage-03/lesson-01.md) and [05.1 Detection theory](lessons/stage-05/lesson-01.md), which also depend on this lesson.
 
@@ -356,13 +356,15 @@ every decision.
 
 <div class="callout sim">
 
-**Sim A: Scene Assessment, tutorial mode (Beginner).** The tutorial walks you through one scene
-end to end. Work it twice:
+**Sim A: Scene Assessment, Beginner.** Work one scene end to end, twice, with the same `?seed=`
+in the URL (for example `?level=Beginner&seed=7`):
 
-1. **As observer.** Complete the tutorial and, at each step, write down which life-cycle stage
-   (call, isolate, assess, act, clear, report) the interface is asking you to perform.
+1. **As observer.** Complete the scene and, at each step (drive, inspect, mark, set cordon,
+   evacuate or shelter, place and search the control point, finish), write down which life-cycle
+   stage (call, isolate, assess, act, clear, report) the interface is asking you to perform.
 2. **As systems engineer.** Replay with the same `?seed=` and list every piece of information you
-   entered or received: sensor readings, cordon edits, hazard marks, decisions. Check the list
+   entered or received: inspection results (camera, internal imaging, trace), cordon radius,
+   control point, hazard marks, evacuation or shelter decisions, log entries. Check the list
    against the schema you design in the practical exercise below. Did the sim ask you for anything
    your schema cannot hold?
 

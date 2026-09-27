@@ -6,7 +6,7 @@
 standards, with what vocabulary, and how an incident flows through an organisation and its data
 systems. Every later stage assumes this vocabulary.
 
-**Estimated time** ≈ 6 h · **Level** Beginner · **Simulator** Sim A (tutorial mode) · **Gate** [Stage 0 assessment](assessments/stage-00.md)
+**Estimated time** ≈ 6 h · **Level** Beginner · **Simulator** Sim A (Beginner level) · **Gate** [Stage 0 assessment](assessments/stage-00.md)
 
 <p class="tags"><span>orientation</span><span>IMAS</span><span>AJP-3.18</span><span>organisations</span><span>data</span></p>
 </div>
@@ -22,7 +22,7 @@ systems. Every later stage assumes this vocabulary.
 
 1. Read 00.1 and do its classification exercises *before* opening the answers. The quality of your
    reasoning from the definitions is the skill, not the labels.
-2. Do the Sim A tutorial once as an observer (00.1), then again as a systems engineer (00.2).
+2. Play a Beginner Sim A scene once as an observer (00.1), then again as a systems engineer (00.2).
 3. Spend most of 00.2's time on the data-model design exercise. It is the first place where your
    engineering background meets the field, and its event-sourced design recurs in Stages 7–9.
 4. Take the [Stage 0 gate](assessments/stage-00.md).

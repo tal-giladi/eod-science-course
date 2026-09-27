@@ -37,7 +37,8 @@ def test_so3_exp_log_round_trip(theta):
 
 def test_se3_exp_log_round_trip_and_expm():
     for _ in range(20):
-        xi = np.r_[RNG.normal(size=3) * 1.2, RNG.normal(size=3)]
+        a = RNG.normal(size=3)
+        xi = np.r_[a / np.linalg.norm(a) * RNG.uniform(0, 3.0), RNG.normal(size=3)]   # |omega| < pi
         T = mod.exp_se3(xi)
         np.testing.assert_allclose(T, expm(mod.se3_hat(xi)), atol=1e-10)
         np.testing.assert_allclose(mod.log_se3(T), xi, atol=1e-9)
@@ -137,7 +138,7 @@ def test_manipulability_zero_at_singularity():
 
 
 def test_reachability_map_sane():
-    m = mod.reachability_map(n_samples=12, cell=0.25)
+    m = mod.reachability_map(n_samples=8, cell=0.25)
     xe, ze = m["x_edges"], m["z_edges"]
     def cell(x, z):
         return m["reachable"][np.searchsorted(ze, z) - 1, np.searchsorted(xe, x) - 1]

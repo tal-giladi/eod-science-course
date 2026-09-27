@@ -1,4 +1,6 @@
-"""manipulator -- kinematics, Jacobians, IK and statics for a fictional 5-DOF EOD-style arm (P08).
+"""[STARTER -- every function that raises NotImplementedError is yours to write; helpers that are implemented are given.]
+
+manipulator -- kinematics, Jacobians, IK and statics for a fictional 5-DOF EOD-style arm (P08).
 
 The arm ("Arm-5", lesson 06.3) sits on a turret on a mobile base:
 turret yaw q1, shoulder pitch q2, elbow pitch q3, wrist pitch q4, wrist roll q5.
@@ -87,12 +89,7 @@ def exp_so3(w) -> np.ndarray:
     ``R = I + sin(th) K + (1 - cos(th)) K^2`` with ``K = hat(axis)``. Must be accurate for
     ``|w| -> 0`` (use the Taylor series ``I + hat(w) + hat(w)^2 / 2`` below ~1e-8).
     """
-    w = np.asarray(w, float)
-    th = np.linalg.norm(w)
-    W = hat(w)
-    if th < 1e-8:
-        return np.eye(3) + W + 0.5 * W @ W
-    return np.eye(3) + np.sin(th) / th * W + (1 - np.cos(th)) / th**2 * W @ W
+    raise NotImplementedError("TODO: implement exp_so3")
 
 
 def rodrigues(axis, angle: float) -> np.ndarray:
@@ -109,21 +106,7 @@ def log_so3(R: np.ndarray) -> np.ndarray:
     ``R - R^T`` vanishes and the axis must come from the symmetric part ``(R + R^T)/2 - cos(th) I
     = (1 - cos th) a a^T``, with the sign taken from ``vee(R - R^T)``).
     """
-    R = np.asarray(R, float)
-    c = np.clip((np.trace(R) - 1) / 2, -1.0, 1.0)
-    s = 0.5 * vee(R - R.T)                       # = sin(th) * axis
-    th = np.arctan2(np.linalg.norm(s), c)        # accurate near 0 and near pi (arccos is not)
-    if th < 1e-6:
-        return s * (1 + th**2 / 6)
-    if th < np.pi - 1e-3:
-        return th / np.sin(th) * s
-    B = 0.5 * (R + R.T) - c * np.eye(3)          # = (1 - c) a a^T
-    k = int(np.argmax(np.diag(B)))
-    a = B[:, k] / np.sqrt(B[k, k] * (1 - c)) if B[k, k] > 0 else np.eye(3)[k]
-    a /= np.linalg.norm(a)
-    if a @ s < 0:
-        a = -a
-    return th * a
+    raise NotImplementedError("TODO: implement log_so3")
 
 
 def exp_se3(xi) -> np.ndarray:
@@ -133,14 +116,7 @@ def exp_se3(xi) -> np.ndarray:
     ``R = exp_so3(w th)``, ``p = (I th + (1 - cos th) [w] + (th - sin th) [w]^2) v``.
     For omega == 0: pure translation ``p = v``.
     """
-    xi = np.asarray(xi, float)
-    w, v = xi[:3], xi[3:]
-    th = np.linalg.norm(w)
-    if th < 1e-12:
-        return make_T(np.eye(3), v)
-    W = hat(w / th)
-    V = np.eye(3) * th + (1 - np.cos(th)) * W + (th - np.sin(th)) * W @ W
-    return make_T(exp_so3(w), V @ (v / th))
+    raise NotImplementedError("TODO: implement exp_se3")
 
 
 def log_se3(T: np.ndarray) -> np.ndarray:
@@ -149,24 +125,12 @@ def log_se3(T: np.ndarray) -> np.ndarray:
     ``omega*th = log_so3(R)``; for th != 0, ``v = G^{-1}(th) p`` with
     ``G^{-1} = I/th - [w]/2 + (1/th - cot(th/2)/2) [w]^2`` (then multiply by th).
     """
-    R, p = T[:3, :3], T[:3, 3]
-    wt = log_so3(R)
-    th = np.linalg.norm(wt)
-    if th < 1e-12:
-        return np.r_[wt, p]
-    W = hat(wt / th)
-    Ginv = np.eye(3) / th - 0.5 * W + (1 / th - 0.5 / np.tan(th / 2)) * W @ W
-    return np.r_[wt, Ginv @ p * th]
+    raise NotImplementedError("TODO: implement log_se3")
 
 
 def adjoint(T: np.ndarray) -> np.ndarray:
     """6x6 adjoint ``[[R, 0], [[p] R, R]]`` mapping twists (omega, v) between frames."""
-    R, p = T[:3, :3], T[:3, 3]
-    A = np.zeros((6, 6))
-    A[:3, :3] = R
-    A[3:, 3:] = R
-    A[3:, :3] = hat(p) @ R
-    return A
+    raise NotImplementedError("TODO: implement adjoint")
 
 
 # ---------------------------------------------------------------------------------------------
@@ -201,11 +165,7 @@ G = 9.81
 
 def dh_transform(theta: float, d: float, a: float, alpha: float) -> np.ndarray:
     """Standard DH link transform ``Rz(theta) Tz(d) Tx(a) Rx(alpha)`` (4x4)."""
-    ct, st, ca, sa = np.cos(theta), np.sin(theta), np.cos(alpha), np.sin(alpha)
-    return np.array([[ct, -st * ca, st * sa, a * ct],
-                     [st, ct * ca, -ct * sa, a * st],
-                     [0, sa, ca, d],
-                     [0, 0, 0, 1.0]])
+    raise NotImplementedError("TODO: implement dh_transform")
 
 
 def fk_dh_frames(q) -> list[np.ndarray]:
@@ -218,10 +178,7 @@ def fk_dh_frames(q) -> list[np.ndarray]:
 
 def fk_dh(q) -> np.ndarray:
     """Tool pose T_05(q) from the DH table ``DH_TABLE``."""
-    T = np.eye(4)
-    for (off, d, a, al), qi in zip(DH_TABLE, q):
-        T = T @ dh_transform(qi + off, d, a, al)
-    return T
+    raise NotImplementedError("TODO: implement fk_dh")
 
 
 def fk_poe(q) -> np.ndarray:
@@ -229,10 +186,7 @@ def fk_poe(q) -> np.ndarray:
 
     Use the closed-form :func:`exp_se3` (no ``scipy.linalg.expm``).
     """
-    T = np.eye(4)
-    for S, qi in zip(S_LIST, q):
-        T = T @ exp_se3(S * qi)
-    return T @ M_HOME
+    raise NotImplementedError("TODO: implement fk_poe")
 
 
 # ---------------------------------------------------------------------------------------------
@@ -245,11 +199,7 @@ def jacobian_space(q) -> np.ndarray:
 
     Satisfies ``[V_s] = dT/dt T^{-1}`` with ``V_s = J_s(q) qdot``.
     """
-    J, T = np.zeros((6, len(q))), np.eye(4)
-    for i, (S, qi) in enumerate(zip(S_LIST, q)):
-        J[:, i] = adjoint(T) @ S
-        T = T @ exp_se3(S * qi)
-    return J
+    raise NotImplementedError("TODO: implement jacobian_space")
 
 
 def point_jacobian(q, point=None, n_active: int | None = None) -> np.ndarray:
@@ -259,12 +209,7 @@ def point_jacobian(q, point=None, n_active: int | None = None) -> np.ndarray:
     ``n_active`` joints move the point (the other columns are zero) -- use this for link centres
     of mass. Formula: ``J_v - [p] J_omega`` from the space Jacobian.
     """
-    Js = jacobian_space(q)
-    p = fk_poe(q)[:3, 3] if point is None else np.asarray(point, float)
-    J = Js[3:] - hat(p) @ Js[:3]
-    if n_active is not None:
-        J[:, n_active:] = 0.0
-    return J
+    raise NotImplementedError("TODO: implement point_jacobian")
 
 
 # ---------------------------------------------------------------------------------------------
@@ -294,37 +239,7 @@ def ik_dls(target, q0=None, task: str = "position", lam: float = 0.05, tol: floa
     configurations inside the limits (deterministic ``seed``) and return the best result.
     Unreachable targets must return ``success=False`` together with the least-error configuration.
     """
-    rng = np.random.default_rng(seed)
-    lo, hi = (limits[:, 0], limits[:, 1]) if limits is not None else (-np.inf * np.ones(5), np.inf * np.ones(5))
-    q_start = np.zeros(N_JOINTS) if q0 is None else np.asarray(q0, float)
-
-    def err(q):
-        if task == "position":
-            return np.asarray(target, float) - fk_poe(q)[:3, 3]
-        T = fk_poe(q)
-        return adjoint(T) @ log_se3(inv_T(T) @ target)
-
-    best = None
-    for attempt in range(restarts + 1):
-        q = np.clip(q_start if attempt == 0 else rng.uniform(lo, hi), lo, hi)
-        k = 0
-        for k in range(1, max_iter + 1):
-            e = err(q)
-            if np.linalg.norm(e) < tol:
-                break
-            J = point_jacobian(q) if task == "position" else jacobian_space(q)
-            dq = J.T @ np.linalg.solve(J @ J.T + lam**2 * np.eye(len(e)), e)
-            big = np.abs(dq).max()
-            if big > max_step:
-                dq *= max_step / big
-            q = np.clip(q + dq, lo, hi)
-        n = float(np.linalg.norm(err(q)))
-        res = IKResult(q, n < tol, k, n)
-        if best is None or res.error < best.error:
-            best = res
-        if res.success:
-            return res
-    return best
+    raise NotImplementedError("TODO: implement ik_dls")
 
 
 def ik_analytic(p, pitch: float, roll: float, elbow_up: bool = True):
@@ -332,16 +247,7 @@ def ik_analytic(p, pitch: float, roll: float, elbow_up: bool = True):
 
     Returns q (5,) or ``None`` if the wrist centre is out of reach (|c3| > 1 beyond 1e-12).
     """
-    q1 = np.arctan2(p[1], p[0])
-    r, z = np.hypot(p[0], p[1]), p[2] - D1
-    rw, zw = r - D5 * np.cos(pitch), z - D5 * np.sin(pitch)
-    c3 = (rw**2 + zw**2 - A2**2 - A3**2) / (2 * A2 * A3)
-    if abs(c3) > 1 + 1e-12:
-        return None
-    c3 = np.clip(c3, -1, 1)
-    q3 = -np.arccos(c3) if elbow_up else np.arccos(c3)
-    q2 = np.arctan2(zw, rw) - np.arctan2(A3 * np.sin(q3), A2 + A3 * np.cos(q3))
-    return np.array([q1, q2, q3, pitch - q2 - q3, roll])
+    raise NotImplementedError("TODO: implement ik_analytic")
 
 
 # ---------------------------------------------------------------------------------------------
@@ -351,7 +257,7 @@ def ik_analytic(p, pitch: float, roll: float, elbow_up: bool = True):
 
 def manipulability(J: np.ndarray) -> float:
     """Yoshikawa measure ``w = sqrt(det(J J^T))`` = product of the singular values of J (m x n, m <= n)."""
-    return float(np.prod(np.linalg.svd(J, compute_uv=False)))
+    raise NotImplementedError("TODO: implement manipulability")
 
 
 def condition_number(J: np.ndarray) -> float:
@@ -405,7 +311,7 @@ def plot_reachability(path: str, n_samples: int = 22) -> None:
 
 def joint_torques(q, F) -> np.ndarray:
     """Joint torques balancing a force F (N, base frame) applied at the tool point: ``tau = J_p^T F``."""
-    return point_jacobian(q).T @ np.asarray(F, float)
+    raise NotImplementedError("TODO: implement joint_torques")
 
 
 def link_coms(q) -> list[tuple[np.ndarray, int]]:
@@ -422,11 +328,7 @@ def gravity_torque(q, payload: float = 0.0, masses=LINK_MASSES) -> np.ndarray:
     ``tau = sum_k J_{c_k}^T (m_k g z_hat) + J_p^T (m_payload g z_hat)``, using
     :func:`point_jacobian` with ``n_active`` for each link CoM from :func:`link_coms`.
     """
-    up = np.array([0.0, 0.0, G])
-    tau = payload * point_jacobian(q).T @ up
-    for m, (c, n) in zip(masses, link_coms(q)):
-        tau += m * point_jacobian(q, c, n).T @ up
-    return tau
+    raise NotImplementedError("TODO: implement gravity_torque")
 
 
 def payload_vs_reach(reaches, torque_limits=TORQUE_LIMITS, masses=LINK_MASSES) -> tuple[np.ndarray, np.ndarray]:
@@ -437,18 +339,7 @@ def payload_vs_reach(reaches, torque_limits=TORQUE_LIMITS, masses=LINK_MASSES) -
     ``tau_kg = gravity_torque(q, 1) - tau_self``; payload = ``min_j (limit_j - |tau_self_j|) / |tau_kg_j|``
     over joints with ``|tau_kg_j| > 1e-9``. Unreachable reaches give NaN and index -1.
     """
-    out, lim = [], []
-    for r in reaches:
-        q = ik_analytic(np.array([r, 0.0, D1]), 0.0, 0.0)
-        if q is None:
-            out.append(np.nan); lim.append(-1); continue
-        t0 = gravity_torque(q, 0.0, masses)
-        tk = gravity_torque(q, 1.0, masses) - t0
-        ok = np.abs(tk) > 1e-9
-        cand = np.full(len(q), np.inf)
-        cand[ok] = (torque_limits[ok] - np.abs(t0[ok])) / np.abs(tk[ok])
-        out.append(float(cand.min())); lim.append(int(np.argmin(cand)))
-    return np.array(out), np.array(lim)
+    raise NotImplementedError("TODO: implement payload_vs_reach")
 
 
 # ---------------------------------------------------------------------------------------------
@@ -463,10 +354,7 @@ def look_at_pan_tilt(T_wb: np.ndarray, T_bp: np.ndarray, o_t, P_w) -> tuple[floa
     ``d = (T_wb T_bp)^{-1} P_w - o_t`` in the PTU base frame, ``pan = atan2(d_y, d_x)``,
     ``tilt = atan2(d_z, hypot(d_x, d_y))``. At the zenith singularity (``hypot < 1e-9``) return pan = 0.
     """
-    d = (inv_T(T_wb @ T_bp) @ np.r_[np.asarray(P_w, float), 1.0])[:3] - np.asarray(o_t, float)
-    h = np.hypot(d[0], d[1])
-    pan = 0.0 if h < 1e-9 else float(np.arctan2(d[1], d[0]))
-    return pan, float(np.arctan2(d[2], h)), float(np.linalg.norm(d))
+    raise NotImplementedError("TODO: implement look_at_pan_tilt")
 
 
 if __name__ == "__main__":

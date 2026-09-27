@@ -497,7 +497,7 @@ flowchart LR
   CJ --> TE["Taylor expansion<br/>products decelerate"]
 ```
 
-Open **Sim I** in CJ mode: drag $D$ and watch the Rayleigh line swing about state 1 until it
+Open **Sim I** in CJ mode: drag the wave Mach number $M = D/a_1$ and watch the Rayleigh line swing about state 1 until it
 touches the reactive Hugoniot.
 
 <iframe class="sim-frame" src="sims/shock-tube/index.html?embed=1" height="720" loading="lazy"></iframe>
@@ -534,12 +534,16 @@ this a deflagration or a detonation?
 
 <div class="callout sim">
 
-**Sim I, CJ mode.** (1) Set $\gamma = 1.3$, $q$ corresponding to mixture G and predict $D_{CJ}$ *before*
-revealing; compare with 1726 m/s. (2) Choose a $D$ above $D_{CJ}$: identify the strong and weak
-intersection points and explain why the strong point needs a supporting piston (overdriven
-detonation). (3) Set $q \to 0$ and confirm the Hugoniot collapses onto the 01.3 shock Hugoniot.
-(4) Increase $q$ tenfold: by what factor does $D_{CJ}$ grow, and how does that compare with the
-$\sqrt q$ strong-limit prediction?
+**Sim I, CJ mode** (fictional one-$\gamma$ gas with $\gamma$ fixed at 1.4; sliders are the
+non-dimensional heat release $Q = q/(p_1v_1)$ and the wave Mach number $M = D/a_1$). (1) Compute $Q$
+for mixture G from its $q$ and $p_1v_1 = RT_1$, predict $M_{CJ}$ with the closed form
+$M_{CJ} = \sqrt{H+1}+\sqrt H$, $H = (\gamma^2-1)Q/(2\gamma)$, *before* reading the $M_{CJ}$ read-out,
+then convert to $D_{CJ} = M_{CJ}a_1$. *Offline (Python):* repeat with $\gamma = 1.3$ and compare both
+with 1726 m/s — how much of the gap is the sim's fixed $\gamma$? (2) Set $M$ above $M_{CJ}$: identify
+the strong and weak intersection points and explain why the strong point needs a supporting piston
+(overdriven detonation). (3) Set $Q \to 0$ and confirm the reactive Hugoniot collapses onto the
+inert (01.3) shock Hugoniot. (4) Increase $Q$ tenfold: by what factor does $M_{CJ}$ grow, and how
+does that compare with the $\sqrt q$ strong-limit prediction?
 
 </div>
 

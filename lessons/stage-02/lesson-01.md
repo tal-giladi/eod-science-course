@@ -591,8 +591,9 @@ sensible term. Expect 2234 K.)
 $\phi$ from 0.5 to 1.0 for methane and plot $T_{ad}(\phi)$ at constant $p$ and constant $V$. (2) Plot
 $\bar c_p$ of the product mixture against $T$ and explain the curvature of $T_{ad}(\phi)$. (3) Replace
 the NASA $c_p(T)$ by a constant and quantify the error. Then open **Sim I** in CJ mode as a preview:
-the "heat release $q$" slider is the per-kilogram LHV you computed here, which 02.2 turns into a
-detonation velocity.
+its heat-release slider $Q = q/(p_1 v_1)$ is the per-kilogram LHV you computed here made
+non-dimensional by $p_1 v_1 = RT_1$ (fictional one-$\gamma$ gas, $\gamma = 1.4$), which 02.2 turns into
+a detonation Mach number and velocity.
 
 </div>
 

@@ -4,7 +4,7 @@
 
 **Covers** [01.1](lessons/stage-01/lesson-01.md) · [01.2](lessons/stage-01/lesson-02.md) · [01.3](lessons/stage-01/lesson-03.md) · [01.4](lessons/stage-01/lesson-04.md) · [01.5](lessons/stage-01/lesson-05.md) · [01.6](lessons/stage-01/lesson-06.md) · [01.7](lessons/stage-01/lesson-07.md) · **Time** ≈ 3 h · **Pass** Proficient band on at least 7 of 8 problems: correct result, units and dimension check, a sanity check, and the governing assumption named.
 
-**Simulator target** In [Sim I](sims/shock-tube/index.html), choose five shock Mach numbers between 1.1 and 3. For each, predict $p_2/p_1$, $\rho_2/\rho_1$, $T_2/T_1$ and $u_2$ *before* revealing, and get all five within 2 %.
+**Simulator target** In [Sim I](sims/shock-tube/index.html), choose five shock Mach numbers between 1.1 and 3. For each, predict $p_2/p_1$, $\rho_2/\rho_1$, $T_2/T_1$ and $u_2$ (sea-level air) *before* moving the Mach slider in the *Normal shock* tab to read them, and get all five within 2 %.
 
 </div>
 

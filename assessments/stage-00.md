@@ -4,7 +4,7 @@
 
 **Covers** [00.1](lessons/stage-00/lesson-01.md) · [00.2](lessons/stage-00/lesson-02.md) · **Time** ≈ 1.5 h · **Pass** Proficient band on every problem (see [assessment plan](curriculum/assessment-plan.md)): correct answer *and* justification *and* named unknowns.
 
-**Simulator target** Sim A tutorial completed, with the debrief read and your incident schema checked against every piece of information the sim asked you for.
+**Simulator target** A Beginner Sim A scene completed, with the debrief read and your incident schema checked against every piece of information the sim asked you for.
 
 </div>
 

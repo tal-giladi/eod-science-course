@@ -155,11 +155,14 @@ weakly (through $T^2$) on where you start.
 
 ## Simulator target — Sim I, CJ mode
 
-Open [Sim I](sims/shock-tube/index.html) in CJ mode. For five settings of your choice spanning
-$\gamma \in [1.15, 1.4]$ and $q \in [0.5, 5]$ MJ/kg (include mixtures G and H), **write down your
-predicted $D_{CJ}$ and $p_{CJ}/p_1$ before revealing**. Target: all five within 3 %. Then set $D$
-10 % above $D_{CJ}$ and identify the strong and weak intersection points; explain which one a
-piston-supported wave reaches and why (ZND path from the von Neumann point).
+Open [Sim I](sims/shock-tube/index.html) in CJ mode (fictional one-$\gamma$ gas, $\gamma = 1.4$,
+non-dimensional heat release $Q = q/(p_1v_1)$). For five values of $Q$ spanning the slider range
+(include the $Q$ values of mixtures G and H, computed from their $q$ and $p_1v_1 = RT_1$), **write down
+your predicted $M_{CJ}$ and $P_{CJ} = p_{CJ}/p_1$ before moving the slider to read them**. Target: all
+five within 3 %. *Offline (Python):* repeat the predictions for $\gamma = 1.15$ and $1.3$ with your
+02.2 solver and state how much $\gamma$ moves $D_{CJ}$. Then set $M$ 10 % above $M_{CJ}$ and identify the
+strong and weak intersection points; explain which one a piston-supported wave reaches and why (ZND
+path from the von Neumann point, which the sim marks as "vN spike").
 
 ## Design / case question — an ageing-related hazard from first principles
 
