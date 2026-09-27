@@ -1,8 +1,10 @@
 # External link report
 
-Checked 228 URLs: 191 OK, 35 refused automated access (403/429/401/405 — usually bot protection; verify in a browser), {len(broken)} failing.
+Checked 228 URLs: 191 OK, 35 refused automated access (403/429/401/405 — usually bot protection; verify in a browser), 2 failing on first pass.
 
-## Failing
+## Failing on first pass (both re-checked: HTTP 200)
+
+The Wikipedia link was truncated at a parenthesis by the old URL regex (fixed); the NRW page timed out once.
 
 | URL | Result |
 |---|---|

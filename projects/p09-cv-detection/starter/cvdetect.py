@@ -1,4 +1,6 @@
-"""cvdetect -- synthetic imagery, classical and CNN detectors, and detection/calibration metrics (P09).
+"""[STARTER -- every function that raises NotImplementedError is yours to write; helpers that are implemented are given.]
+
+cvdetect -- synthetic imagery, classical and CNN detectors, and detection/calibration metrics (P09).
 
 All objects are fictional. The *target* class is "Object-K": a small capsule-shaped item with a
 banded (striped) surface. *Clutter* comprises rocks, discs, sticks, boxes and plain (un-banded)
@@ -243,22 +245,12 @@ def crop_patch(image: np.ndarray, cx: float, cy: float, size: int = 32) -> np.nd
 
 def iou(a, b) -> float:
     """Intersection over union of two boxes (x1, y1, x2, y2). Disjoint boxes give 0."""
-    iw = max(0.0, min(a[2], b[2]) - max(a[0], b[0]))
-    ih = max(0.0, min(a[3], b[3]) - max(a[1], b[1]))
-    inter = iw * ih
-    union = (a[2] - a[0]) * (a[3] - a[1]) + (b[2] - b[0]) * (b[3] - b[1]) - inter
-    return float(inter / union) if union > 0 else 0.0
+    raise NotImplementedError("TODO: implement iou")
 
 
 def iou_matrix(A: np.ndarray, B: np.ndarray) -> np.ndarray:
     """Vectorised pairwise IoU, shape (len(A), len(B))."""
-    A, B = np.asarray(A, float).reshape(-1, 4), np.asarray(B, float).reshape(-1, 4)
-    iw = np.clip(np.minimum(A[:, None, 2], B[None, :, 2]) - np.maximum(A[:, None, 0], B[None, :, 0]), 0, None)
-    ih = np.clip(np.minimum(A[:, None, 3], B[None, :, 3]) - np.maximum(A[:, None, 1], B[None, :, 1]), 0, None)
-    inter = iw * ih
-    area = lambda X: (X[:, 2] - X[:, 0]) * (X[:, 3] - X[:, 1])
-    union = area(A)[:, None] + area(B)[None, :] - inter
-    return np.where(union > 0, inter / np.where(union > 0, union, 1), 0.0)
+    raise NotImplementedError("TODO: implement iou_matrix")
 
 
 def nms(boxes: np.ndarray, scores: np.ndarray, iou_thr: float = 0.5) -> np.ndarray:
@@ -267,17 +259,7 @@ def nms(boxes: np.ndarray, scores: np.ndarray, iou_thr: float = 0.5) -> np.ndarr
     Keep the highest-scoring remaining box, delete every remaining box whose IoU with it exceeds
     ``iou_thr`` (strictly greater), repeat. Ties in score are broken by original index.
     """
-    boxes, scores = np.asarray(boxes, float).reshape(-1, 4), np.asarray(scores, float)
-    order = np.argsort(-scores, kind="stable")
-    keep = []
-    while order.size:
-        i = order[0]
-        keep.append(int(i))
-        if order.size == 1:
-            break
-        ious = iou_matrix(boxes[i:i + 1], boxes[order[1:]])[0]
-        order = order[1:][ious <= iou_thr]
-    return np.array(keep, int)
+    raise NotImplementedError("TODO: implement nms")
 
 
 # =============================================================================================
@@ -292,19 +274,7 @@ def match_detections(det_boxes, det_scores, gt_boxes, iou_thr: float = 0.3) -> n
     that GT is then consumed. Duplicates on an already-matched GT are false positives.
     Returns a boolean array aligned with ``det_boxes``.
     """
-    det_boxes = np.asarray(det_boxes, float).reshape(-1, 4)
-    gt_boxes = np.asarray(gt_boxes, float).reshape(-1, 4)
-    tp = np.zeros(len(det_boxes), bool)
-    if len(det_boxes) == 0 or len(gt_boxes) == 0:
-        return tp
-    M = iou_matrix(det_boxes, gt_boxes)
-    used = np.zeros(len(gt_boxes), bool)
-    for i in np.argsort(-np.asarray(det_scores, float), kind="stable"):
-        cand = np.where(used, -1.0, M[i])
-        j = int(np.argmax(cand))
-        if cand[j] >= iou_thr:
-            tp[i], used[j] = True, True
-    return tp
+    raise NotImplementedError("TODO: implement match_detections")
 
 
 def froc_curve(detections: list, ground_truth: list, iou_thr: float = 0.3) -> dict:
@@ -317,33 +287,17 @@ def froc_curve(detections: list, ground_truth: list, iou_thr: float = 0.3) -> di
     Returns ``{"thresholds", "sensitivity", "fppi", "n_gt", "n_images"}`` (arrays in the order of
     decreasing threshold). An empty detection set yields empty arrays.
     """
-    scores, flags = [], []
-    n_gt = 0
-    for (b, s), g in zip(detections, ground_truth):
-        s = np.asarray(s, float).reshape(-1)
-        scores.append(s)
-        flags.append(match_detections(b, s, g, iou_thr))
-        n_gt += len(np.asarray(g).reshape(-1, 4))
-    s = np.concatenate(scores) if scores else np.zeros(0)
-    f = np.concatenate(flags) if flags else np.zeros(0, bool)
-    order = np.argsort(-s, kind="stable")
-    s, f = s[order], f[order]
-    ctp, cfp = np.cumsum(f), np.cumsum(~f)
-    last = np.r_[s[1:] != s[:-1], True] if len(s) else np.zeros(0, bool)   # end of each tie group
-    n_img = len(ground_truth)
-    return {"thresholds": s[last], "sensitivity": ctp[last] / max(n_gt, 1), "fppi": cfp[last] / max(n_img, 1),
-            "n_gt": n_gt, "n_images": n_img}
+    raise NotImplementedError("TODO: implement froc_curve")
 
 
 def recall_at_fppi(curve: dict, fppi_max: float) -> float:
     """Highest sensitivity among operating points with ``fppi <= fppi_max`` (0 if none)."""
-    ok = np.asarray(curve["fppi"]) <= fppi_max + 1e-12
-    return float(np.max(np.asarray(curve["sensitivity"])[ok])) if ok.any() else 0.0
+    raise NotImplementedError("TODO: implement recall_at_fppi")
 
 
 def froc_score(curve: dict, fppi_points=(0.5, 1.0, 2.0, 4.0)) -> float:
     """Mean of :func:`recall_at_fppi` over the predefined FPPI points (lesson 09.1 section 7.3)."""
-    return float(np.mean([recall_at_fppi(curve, f) for f in fppi_points]))
+    raise NotImplementedError("TODO: implement froc_score")
 
 
 def softmax(z: np.ndarray, T: float = 1.0) -> np.ndarray:
@@ -356,10 +310,7 @@ def softmax(z: np.ndarray, T: float = 1.0) -> np.ndarray:
 
 def nll(logits: np.ndarray, labels: np.ndarray, T: float = 1.0) -> float:
     """Mean negative log-likelihood of ``labels`` under ``softmax(logits / T)``."""
-    z = np.asarray(logits, float) / T
-    zmax = z.max(axis=1, keepdims=True)
-    lse = (zmax + np.log(np.exp(z - zmax).sum(axis=1, keepdims=True)))[:, 0]
-    return float(np.mean(lse - z[np.arange(len(z)), labels]))
+    raise NotImplementedError("TODO: implement nll")
 
 
 def ece(probs: np.ndarray, labels: np.ndarray, n_bins: int = 15) -> float:
@@ -369,16 +320,7 @@ def ece(probs: np.ndarray, labels: np.ndarray, n_bins: int = 15) -> float:
     the fraction whose argmax equals the label. A confidence c falls in bin ``ceil(c*B) - 1``
     (clipped to [0, B-1]).
     """
-    probs = np.asarray(probs, float)
-    conf, pred = probs.max(1), probs.argmax(1)
-    correct = (pred == np.asarray(labels)).astype(float)
-    b = np.clip(np.ceil(conf * n_bins).astype(int) - 1, 0, n_bins - 1)
-    total = 0.0
-    for k in range(n_bins):
-        m = b == k
-        if m.any():
-            total += m.mean() * abs(correct[m].mean() - conf[m].mean())
-    return float(total)
+    raise NotImplementedError("TODO: implement ece")
 
 
 def reliability_curve(probs: np.ndarray, labels: np.ndarray, n_bins: int = 15) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -397,9 +339,7 @@ def fit_temperature(logits: np.ndarray, labels: np.ndarray) -> float:
     NLL is convex in beta = 1/T, so a bounded 1-D search over log T (e.g. [-3, 3]) with
     ``scipy.optimize.minimize_scalar`` is reliable. Returns T > 0.
     """
-    res = minimize_scalar(lambda lt: nll(logits, labels, np.exp(lt)), bounds=(-3, 3), method="bounded",
-                          options={"xatol": 1e-6})
-    return float(np.exp(res.x))
+    raise NotImplementedError("TODO: implement fit_temperature")
 
 
 # =============================================================================================
@@ -410,16 +350,7 @@ def fit_temperature(logits: np.ndarray, labels: np.ndarray) -> float:
 def orientation_histograms(patch: np.ndarray, cells: int = 4, bins: int = 8) -> np.ndarray:
     """HOG-like feature: unsigned gradient-orientation histograms (magnitude-weighted) on a
     ``cells x cells`` grid, globally L2-normalised. Length ``cells*cells*bins``."""
-    p = np.asarray(patch, float)
-    gy, gx = np.gradient(p)
-    mag, ang = np.hypot(gx, gy), np.mod(np.arctan2(gy, gx), np.pi)
-    bidx = np.minimum((ang / np.pi * bins).astype(int), bins - 1)
-    H, W = p.shape
-    ci = np.minimum((np.arange(H) * cells) // H, cells - 1)
-    cj = np.minimum((np.arange(W) * cells) // W, cells - 1)
-    cell_id = ci[:, None] * cells + cj[None, :]
-    feat = np.bincount((cell_id * bins + bidx).ravel(), weights=mag.ravel(), minlength=cells * cells * bins)
-    return feat / (np.linalg.norm(feat) + 1e-9)
+    raise NotImplementedError("TODO: implement orientation_histograms")
 
 
 def band_energy(patch: np.ndarray, n_bands: int = 8) -> np.ndarray:
@@ -438,15 +369,7 @@ def band_energy(patch: np.ndarray, n_bands: int = 8) -> np.ndarray:
 def handcrafted_features(patch: np.ndarray) -> np.ndarray:
     """Feature vector for one patch: orientation histograms of the contrast-normalised patch,
     band energy of the central region, and centre/surround intensity statistics."""
-    p = np.asarray(patch, float)
-    z = (p - p.mean()) / (p.std() + 1e-3)
-    H, W = p.shape
-    c = p[H // 4: 3 * H // 4, W // 4: 3 * W // 4]
-    ring = np.ones_like(p, bool)
-    ring[H // 4: 3 * H // 4, W // 4: 3 * W // 4] = False
-    stats = np.array([c.mean() - p[ring].mean(), c.std(), p.std(), c.mean(),
-                      np.abs(np.diff(c, axis=0)).mean(), np.abs(np.diff(c, axis=1)).mean()])
-    return np.concatenate([orientation_histograms(z), band_energy(c), stats])
+    raise NotImplementedError("TODO: implement handcrafted_features")
 
 
 def extract_features(X: np.ndarray) -> np.ndarray:
@@ -475,33 +398,15 @@ class LogisticRegression:
         ``H = Z^T diag(p(1-p)) Z / n + R`` where Z is the standardised design with a ones column
         and R = l2 * I except 0 for the bias. H is SPD: solve with a Cholesky factorisation.
         """
-        X = np.asarray(X, float)
-        y = np.asarray(y, float)
-        self.mu, self.sd = X.mean(0), X.std(0) + 1e-9
-        Z = np.c_[self._prep(X), np.ones(len(X))]
-        d = Z.shape[1]
-        theta = np.zeros(d)
-        R = self.l2 * np.eye(d)
-        R[-1, -1] = 0.0
-        n = len(y)
-        for _ in range(self.max_iter):
-            p = 1 / (1 + np.exp(-(Z @ theta)))
-            g = Z.T @ (p - y) / n + R @ theta
-            Hm = (Z * (p * (1 - p))[:, None]).T @ Z / n + R + 1e-10 * np.eye(d)
-            step = cho_solve(cho_factor(Hm), g)        # SPD Hessian: Cholesky
-            theta -= step
-            if np.abs(step).max() < self.tol:
-                break
-        self.w, self.b = theta[:-1], theta[-1]
-        return self
+        raise NotImplementedError("TODO: implement LogisticRegression.fit")
 
     def decision_function(self, X: np.ndarray) -> np.ndarray:
         """Logit ``w.x_std + b``."""
-        return self._prep(X) @ self.w + self.b
+        raise NotImplementedError("TODO: implement LogisticRegression.decision_function")
 
     def predict_proba(self, X: np.ndarray) -> np.ndarray:
         """P(y = 1 | x)."""
-        return 1 / (1 + np.exp(-self.decision_function(X)))
+        raise NotImplementedError("TODO: implement LogisticRegression.predict_proba")
 
 
 def propose_regions(image: np.ndarray, k: float = 2.0, min_area: int = 15, max_area: int = 1200,
@@ -570,13 +475,7 @@ def build_cnn(n_classes: int = 2, width: int = 8):
     """A small CNN for 32x32 single-channel patches:
     conv3x3(1->w)-BN-ReLU-maxpool, conv3x3(w->2w)-BN-ReLU-maxpool, conv3x3(2w->4w)-BN-ReLU,
     global average pool, linear(4w -> n_classes). Returns a ``torch.nn.Module`` producing logits."""
-    nn = _torch().nn
-    w = width
-    return nn.Sequential(
-        nn.Conv2d(1, w, 3, padding=1), nn.BatchNorm2d(w), nn.ReLU(), nn.MaxPool2d(2),
-        nn.Conv2d(w, 2 * w, 3, padding=1), nn.BatchNorm2d(2 * w), nn.ReLU(), nn.MaxPool2d(2),
-        nn.Conv2d(2 * w, 4 * w, 3, padding=1), nn.BatchNorm2d(4 * w), nn.ReLU(),
-        nn.AdaptiveAvgPool2d(1), nn.Flatten(), nn.Linear(4 * w, n_classes))
+    raise NotImplementedError("TODO: implement build_cnn")
 
 
 def _to_tensor(X):
@@ -596,33 +495,7 @@ def train_cnn(X: np.ndarray, y: np.ndarray, epochs: int = 10, batch: int = 64, l
     down, not sped up, by thread oversubscription); the previous setting is restored.
     Returns the model in eval mode.
     """
-    torch = _torch()
-    nn = torch.nn
-    old_threads = torch.get_num_threads()
-    if threads:
-        torch.set_num_threads(threads)
-    torch.manual_seed(seed)
-    rng = np.random.default_rng(seed)
-    model = build_cnn(2, width)
-    opt = torch.optim.Adam(model.parameters(), lr=lr)
-    Xt, yt = _to_tensor(X), torch.from_numpy(np.asarray(y, np.int64))
-    loss_fn = nn.CrossEntropyLoss()
-    for _ in range(epochs):
-        model.train()
-        perm = rng.permutation(len(Xt))
-        for i in range(0, len(perm), batch):
-            idx = torch.from_numpy(perm[i:i + batch])
-            xb, yb = Xt[idx], yt[idx]
-            if augment:
-                xb = torch.rot90(xb, int(rng.integers(4)), dims=(2, 3))
-                if rng.uniform() < 0.5:
-                    xb = torch.flip(xb, dims=(3,))
-            opt.zero_grad()
-            loss = loss_fn(model(xb), yb)
-            loss.backward()
-            opt.step()
-    torch.set_num_threads(old_threads)
-    return model.eval()
+    raise NotImplementedError("TODO: implement train_cnn")
 
 
 def cnn_logits(model, X: np.ndarray, batch: int = 512) -> np.ndarray:

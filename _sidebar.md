@@ -105,6 +105,7 @@
   - [P06 · Path planning: A*, risk cost maps, RRT*, coverage (`planning`)](projects/p06-path-planning/README.md)
   - [P07 · SLAM simulation: occupancy grids, ICP, EKF-SLAM and pose graphs](projects/p07-slam/README.md)
   - [P08 · Manipulator kinematics: Arm-5 library](projects/p08-manipulator/README.md)
+  - [P09 · Computer-vision detection: classical baseline, small CNN, and metrics that matter](projects/p09-cv-detection/README.md)
   - [P10 · Synthetic EOD scene generator](projects/p10-scene-generator/README.md)
   - [P11 · Teleoperation simulator and experiment harness](projects/p11-teleoperation/README.md)
   - [P12 · Human-in-the-loop decision system](projects/p12-hitl-decision/README.md)
