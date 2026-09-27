@@ -121,10 +121,10 @@ without slip, and estimate how many metres of track travel are "wasted" in later
 full turn.
 
 *Answer.* No slip: $\omega = 0.6/0.5 = 1.2$ rad/s. With $\chi=1.6$: $0.75$ rad/s. A full turn takes
-$2\pi/0.75 = 8.38$ s, during which each belt travels $0.3\cdot8.38 = 2.51$ m, against the
-$\pi B/2\cdot2 = \pi\cdot0.25\cdot2$... more simply, the no-slip turn needs $2\pi/1.2 = 5.24$ s, or
-1.57 m of belt. The extra 0.94 m per track (37 % of belt travel) is skidding: pure energy loss, wear
-and surface damage. Spot turns are the most energy-expensive manoeuvre a tracked robot makes.
+$2\pi/0.75 = 8.38$ s, during which each belt travels $0.3\cdot8.38 = 2.51$ m. A no-slip turn would
+need $2\pi/1.2 = 5.24$ s, i.e. 1.57 m of belt (the circumference $\pi B$ of the track's circle).
+The extra 0.94 m per track (37 % of belt travel) is skidding: pure energy loss, wear and surface
+damage. Spot turns are the most energy-expensive manoeuvre a tracked robot makes.
 
 </details>
 
@@ -372,7 +372,7 @@ radio to a low-rate telemetry mode for 1 h of the 1.5 h, saving a further 8 W. I
 mission now feasible?
 
 *Answer.* Standby becomes $28\cdot0.5 + 20\cdot1.0 = 34$ Wh (from 60), so the total is 143 Wh.
-That is still more than 134 Wh, so it is still infeasible, by 9 Wh (≈ 7 %). Energy management helps,
+That is still more than 134 Wh, so it is still infeasible, by about 9 Wh (≈ 6 %). Energy management helps,
 but the winter case needs hardware (heated or bigger pack). Note the trap: low-power radio modes
 raise latency (06.5), a human-factors cost in exchange for the energy saving.
 
@@ -414,8 +414,9 @@ Pole placement gets you close. Simulation tells you the truth.
 
 *Numbers.* $K = 0.034$ m s⁻¹/V, $\tau = 0.4$ s, target $\zeta=0.8$, $\omega_n = 5$ rad/s gives
 $K_p = (3.2-1)/0.034 = 64.7$ and $K_i = 25\cdot0.4/0.034 = 294$. For a small (unsaturated) 0.1 m/s
-step the overshoot is **7.2 %**. The second-order formula $e^{-\zeta\pi/\sqrt{1-\zeta^2}}$ predicts
-1.5 %; the extra comes from the zero. Settling (2 %) takes 0.98 s.
+step, the discrete controller below gives **6.5 %** overshoot. The second-order formula
+$e^{-\zeta\pi/\sqrt{1-\zeta^2}}$ predicts 1.5 %; the extra comes from the zero. Settling (2 %)
+takes 0.97 s.
 
 **Integrator windup.** Command a 0.7 m/s step. The initial $u = 64.7\cdot0.7 = 45$ V is clipped to
 24 V. While the output is saturated, the integrator keeps accumulating error it cannot act on.
@@ -424,7 +425,7 @@ When the output finally reaches the setpoint, the stored integral drives it far 
 | Anti-windup | Overshoot | 2 % settling | Time saturated |
 |---|---|---|---|
 | none | **15.6 %** | 2.47 s | 1.92 s |
-| conditional integration (clamping) | 0.9 % | 0.80 s | 0.26 s |
+| conditional integration (clamping) | 0.7 % | 0.81 s | 0.26 s |
 
 On a teleoperated robot, windup is felt as the robot surging after it frees itself from an
 obstacle, or continuing after the stick is released. It is a safety issue. Always implement
@@ -462,7 +463,7 @@ def simulate(ctrl, r=0.7, K=0.034, tau=0.4, ts=0.01, T=4.0):
     return 100 * (ys.max() - r) / r
 
 Kp, Ki = (2*0.8*5*0.4 - 1) / 0.034, 25 * 0.4 / 0.034
-print(simulate(PID(Kp, Ki)))     # about 1 % with anti-windup (see table)
+print(simulate(PID(Kp, Ki)))     # 0.67 % with anti-windup; about 15.6 % if the integrator runs unconditionally
 ```
 
 <details class="answer"><summary>Exercise 6 — then reveal</summary>
@@ -472,8 +473,9 @@ Show that the PI loop has zero steady-state speed error but a P-only loop does n
 P-only error for $K_p = 64.7$ at a 0.5 m/s setpoint. (b) Why is the derivative term usually
 applied to $-y$ rather than to $e$ in a speed loop?
 
-*Answer.* (a) With an integrator, the final-value theorem on $E(s) = D$-to-$E$ transfer gives 0 for
-step disturbances. P-only: $y_{ss} = K(K_pe - 3)$ with $e = 0.5 - y_{ss}$, so
+*Answer.* (a) With an integrator in $C(s)$, the disturbance-to-error transfer function
+$-G/(1+CG)$ has a zero at $s=0$, so the final-value theorem gives zero error for a step
+disturbance. P-only: $y_{ss} = K(K_pe - 3)$ with $e = 0.5 - y_{ss}$, so
 $y_{ss} = 0.034(64.7\cdot0.5 - 3)/(1 + 0.034\cdot64.7) = 0.997/3.200 = 0.312$ m/s, an error of
 0.188 m/s (38 %). (b) Derivative on measurement avoids the "derivative kick", an impulse on setpoint
 steps, which the operator's joystick produces constantly.
@@ -547,9 +549,12 @@ print(K, np.abs(np.linalg.eigvals(Ad - Bd @ K)))   # [[39.86 4.36]]  [0.905 0.17
 Find $R$ such that the 0.5 rad step never exceeds 5 N m (keep $Q = \mathrm{diag}(100,1)$). What
 happens to the settling time? Why is this better than clipping the torque of the original LQR?
 
-*Answer.* The peak torque is $K_1\cdot0.5$ at $k=0$, so you need $K_1 \le 10$. A bisection on $R$
-gives $R \approx 0.9$ ($K \approx [10.0, 2.8]$; verify with your code). Settling lengthens to
-roughly 0.9–1 s. Tuning $R$ keeps the loop linear and optimal *for the real actuator*. Clipping
+*Answer.* The peak torque is $K_1\cdot0.5$ at $k=0$, so you need $K_1 \le 10$. Root-finding on $R$
+gives $R \approx 0.74$, $K \approx [10.0,\ 1.32]$, closed-loop poles at $s \approx -11.5, -20.2$
+rad/s. Surprisingly, 2 % settling barely changes (about 0.41 s against 0.39 s). The original design
+spent most of its torque on the very fast pole at −176 rad/s, which contributed almost nothing to
+settling; the slow pole near −10 rad/s set the response. Always look at *where* the effort goes.
+Tuning $R$ keeps the loop linear and optimal *for the real actuator*. Clipping
 makes it a different, non-optimal nonlinear system, which can wind up in the same way as the PI
 of §7 when there is integral action.
 
@@ -592,10 +597,10 @@ landing. The robot is 25 kg, from the 06.1 design.
 2. **Stability.** Arm stowed low and forward: margin 28° static. Keep up-slope acceleration below
    about 1 m/s² (it costs 4.6°), so set a slope-aware acceleration limit in the speed loop.
 3. **Landings.** Spot turns on landings: with $\chi \approx 1.6$ on concrete, a 180° spot turn at
-   $\pm0.3$ m/s takes $\pi/0.75 = 4.2$ s and wastes about 0.47 m of belt travel per track. Six
-   landings cost about 25 s.
-4. **Energy.** Stairs ≈ 2 min at ≈ 260 W (both motors plus electronics) ≈ 9 Wh, well within §6.
-   The standby phase at the landing dominates.
+   $\pm0.3$ m/s takes $\pi/0.75 = 4.2$ s and wastes about 0.47 m of belt travel per track. Budget
+   six landing turns: about 25 s.
+4. **Energy.** Stairs plus turns take about 105 s at about 260 W (both motors plus electronics),
+   so about 7.6 Wh, well within §6. The standby phase at the landing dominates.
 5. **Odometry.** Floor-to-floor turns with χ uncertainty accumulate heading error (Exercise 2).
    Plan a gyro-aided heading and visual landmarks at each landing (06.6).
 6. **Residual risk.** A stair with open risers or a nosing overhang changes the contact geometry.

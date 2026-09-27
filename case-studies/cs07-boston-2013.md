@@ -19,12 +19,12 @@ the data engineering behind them.
 
 ## Situation
 
-On **15 April 2013**, during the 117th Boston Marathon, two improvised devices functioned about
-12 seconds apart near the finish line on Boylston Street, among thousands of spectators. Three
-people were killed. The FBI reports more than 500 injured. The state's after-action report,
-based on hospital data available at the time, counted 264 (FBI, *Boston Marathon Bombing*; MEMA
-et al., *After Action Report*, 2014). **Sixteen people suffered traumatic amputations** (AAR, as
-summarised in reporting).
+On **15 April 2013**, during the 117th Boston Marathon, two improvised devices functioned near
+the finish line among thousands of spectators. Three people were killed. The FBI reports more
+than 500 injured. The state's after-action report counted 264 injured, 16 of them with
+traumatic amputations, as summarised by EMS World (FBI, *Boston Marathon Bombing*; MEMA et al.,
+*After Action Report*, 2014). The injury figures differ between sources and between the dates
+on which the counts were made. Cite the source whenever you use one.
 
 Three days later the FBI released photographs and video of two suspects. That evening the
 suspects killed an MIT police officer, carjacked a vehicle and engaged police in Watertown. One
@@ -43,7 +43,7 @@ problem as much as a scene-examination problem.**
 | Laboratory | Mature explosives-residue chemistry, DNA, fingerprints, device reconstruction (FBI Laboratory, TEDAC) |
 | Digital media | Smartphones everywhere; commercial CCTV; broadcast video; social media platforms |
 | Ingest | A **dedicated digital tip line** set up to take photos and video from the public (FBI) |
-| Analytics | Commercial video-management tools, metadata extraction, face detection. Automated face *recognition* at the time performed poorly on low-resolution, off-angle crowd imagery (see [09.1](lessons/stage-09/lesson-01.md)) |
+| Analytics | Commercial video-management tools, metadata extraction, face detection. Automated face *recognition* was far less capable than today's deep-learning systems, particularly on low-resolution, off-angle crowd imagery (see [09.1](lessons/stage-09/lesson-01.md)) |
 
 ## Information available to investigators
 
@@ -104,8 +104,9 @@ Triage is essential.
 |---|---|
 | Two individuals of interest from imagery; online crowds were misidentifying innocent people | Identities; whether release would help or make the suspects flee or act |
 
-The FBI released images **three days** after the attack (FBI). According to reporting, the timing
-was partly intended to limit the damage from online misidentifications (see Sources). Releasing
+The FBI released images **three days** after the attack (FBI). A Santa Clara University ethics
+case study describes the release as an effort "to stave off what was turning into a
+witch-hunt" (Connolly et al., 2015). Releasing
 images crowdsources *identification*. It also warns the suspects. What followed that night shows
 both effects.
 
@@ -165,8 +166,8 @@ flowchart LR
 
 ## Outcome
 
-- Suspects identified from imagery within **three days**. Arrest within five days. Conviction on
-  all counts (FBI).
+- Suspect images released within **three days**. The surviving suspect was arrested on 19 April,
+  four days after the attack. Conviction on all counts (FBI).
 - At trial the prosecution introduced **more than 1,000 exhibits** and called **more than 100
   witnesses** (FBI).
 - The after-action report praised unified command and inter-agency relationships. Later
@@ -272,6 +273,8 @@ excluded material can be revisited, which also keeps an audit trail for the defe
 | After Action Report for the Response to the 2013 Boston Marathon Bombings | Massachusetts Emergency Management Agency et al. | 2014 | https://www.mass.gov/files/documents/2016/09/uz/after-action-report-for-the-response-to-the-2013-boston-marathon-bombings.pdf (mirror: https://www.policinginstitute.org/wp-content/uploads/2015/05/after-action-report-for-the-response-to-the-2013-boston-marathon-bombings_0.pdf) |
 | ATF's critical role investigating the Boston Marathon bombing | ATF | accessed 2026 | https://www.atf.gov/our-history/historical-articles/atfs-critical-role-investigating-boston-marathon-bombing |
 | A Guide for Explosion and Bombing Scene Investigation (NCJ 181869) | NIJ Technical Working Group | Jun 2000 | https://nij.ojp.gov/library/publications/guide-explosion-and-bombing-scene-investigation |
+| The Boston Bombing Review: What Went Right and Wrong? (summary of the AAR) | EMS World (HMP Global) | 2015 | https://www.hmpgloballearningnetwork.com/site/emsworld/article/12079966/boston-marathon-bombing-after-action-report |
+| Social Media and the Boston Marathon Bombing (case study) | P. Connolly, R. A. Althaus, R. B. Skipper, Markkula Center for Applied Ethics, Santa Clara University | 1 May 2015 | https://www.scu.edu/ethics/focus-areas/internet-ethics/resources/social-media-and-the-boston-marathon-bombing/ |
 | How Reddit became a hub of the crowdsourced Boston Marathon bombing investigation | Fast Company | Apr 2013 | https://www.fastcompany.com/3008466/how-reddit-became-hub-crowdsourced-boston-marathon-bombing-investigation |
 | Why Reddit, 4chan attempt to ID Marathon bomber went bad | ABC News | Apr 2013 | https://abcnews.com/ABC_Univision/Entertainment/reddit-4chan-attempt-id-boston-marathon-bomber-bad/story?id=18987236 |
 | Report on bombing response cites lack of 'weapons discipline' in Watertown manhunt | WBUR News | 3 Apr 2015 | https://www.wbur.org/news/2015/04/03/boston-marathon-bombing-response-report |

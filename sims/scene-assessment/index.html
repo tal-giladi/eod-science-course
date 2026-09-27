@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sim A · Scene Assessment</title>
+<link rel="stylesheet" href="../common/sim.css">
+<style>
+  .layout { grid-template-columns: 1fr 340px; }
+  #view { position: relative; height: 620px; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: #0b0f14; }
+  #view canvas { border: 0; border-radius: 0; }
+  .tools button.active { border-color: var(--accent); color: var(--accent); }
+  .lbl { position: absolute; pointer-events: none; font-family: var(--mono); font-size: 11px; color: #e6edf3; background: rgba(10,14,20,.75); padding: 1px 5px; border-radius: 3px; transform: translate(-50%, -140%); white-space: nowrap; }
+  .lbl.h { color: var(--red); } .lbl.b { color: var(--green); } .lbl.u { color: var(--yellow); }
+  .item-actions button { margin: 2px 0; width: 100%; text-align: left; font-size: 12px; display: flex; justify-content: space-between; }
+  @media (max-width: 1100px) { .layout { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="layout">
+  <div class="panel">
+    <div class="row tools" id="tools">
+      <button data-mode="orbit" class="active">view (orbit/zoom)</button>
+      <button data-mode="drive">robot: click to drive</button>
+      <button data-mode="select">select item</button>
+      <button data-mode="cp">place control point</button>
+      <button id="top">top view</button>
+      <label>cordon radius</label><input type="range" id="rad" min="0" max="250" step="5" value="0" style="width:150px"><span class="mono" id="radv">0 m</span>
+    </div>
+    <div id="view"></div>
+    <div class="hint">Drag to rotate, wheel to zoom. The robot starts at the control vehicle. Items are fictional; the call reported "a suspicious item near the fountain".</div>
+  </div>
+  <div class="panel">
+    <h2>Status <span class="hint" id="clock"></span></h2>
+    <div class="kv" id="status"></div>
+    <h2 style="margin-top:10px">Selected item</h2>
+    <div id="itemBox"><span class="hint">Use "select item" and click an object.</span></div>
+    <h2 style="margin-top:10px">Scene actions</h2>
+    <div class="item-actions">
+      <button id="aEvac"><span>Evacuate inside cordon</span><span class="mono">15 min</span></button>
+      <button id="aShelter"><span>Shelter-in-place: glazed buildings near cordon</span><span class="mono">5 min</span></button>
+      <button id="aSweep"><span>Search control point &amp; approach routes</span><span class="mono">15 min</span></button>
+    </div>
+    <h2 style="margin-top:10px">Log</h2>
+    <div class="log" id="log" style="max-height:180px"></div>
+    <div class="row"><button class="primary" id="finish">Finish assessment → debrief</button></div>
+  </div>
+</div>
+<script src="../common/eod.js"></script>
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+               "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const U = EOD.util;
+let level;
+const diff = EOD.ui.difficultySelect(v => { location.href = location.pathname + '?level=' + v; });
+level = diff.value;
+EOD.ui.header('A', 'Scene Assessment', '3D scene · robot · sensors · hazards · cordon · control point', [U.el('span', { class: 'hint' }, 'difficulty'), diff]);
+const seed = EOD.seedFromUrl(), R = EOD.rng(seed);
+const logf = EOD.ui.logger(U.$('#log'));
+const LV = { Beginner: { time: 150, battery: 100, ambig: 0.1 }, Intermediate: { time: 120, battery: 80, ambig: 0.25 }, Advanced: { time: 100, battery: 65, ambig: 0.4 }, Expert: { time: 85, battery: 55, ambig: 0.55 } }[level];
+
+// ================================================= three.js scene
+const view = U.$('#view');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(window.devicePixelRatio || 1);
+view.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0b0f14);
+scene.fog = new THREE.Fog(0x0b0f14, 120, 260);
+const camera = new THREE.PerspectiveCamera(50, 1, 0.5, 600);
+camera.position.set(-40, 70, 90);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 0, 0); controls.maxPolarAngle = Math.PI * 0.49; controls.update();
+scene.add(new THREE.HemisphereLight(0xbfd4ff, 0x20242a, 0.9));
+const sun = new THREE.DirectionalLight(0xffffff, 0.9); sun.position.set(60, 100, 40); scene.add(sun);
+
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(200, 160), new THREE.MeshLambertMaterial({ color: 0x23282f }));
+ground.rotation.x = -Math.PI / 2; scene.add(ground);
+const grid = new THREE.GridHelper(200, 40, 0x2c3440, 0x1c232c); grid.position.y = 0.02; scene.add(grid);
+
+function box(w, h, d, color, x, z, opts = {}) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color, transparent: !!opts.glass, opacity: opts.glass ? 0.85 : 1 }));
+  m.position.set(x, h / 2 + (opts.y || 0), z); scene.add(m); return m;
+}
+// buildings: [x, z, w, d, h, glass]
+const BUILD = [[-60, -45, 40, 25, 22, true], [-5, -52, 35, 18, 30, true], [50, -45, 40, 25, 16, false], [-65, 40, 30, 30, 14, false], [60, 45, 35, 30, 26, true], [10, 55, 30, 18, 12, false]];
+const buildings = BUILD.map(b => { const m = box(b[2], b[4], b[3], b[5] ? 0x2f4a66 : 0x4a4640, b[0], b[1], { glass: b[5] }); m.userData = { glass: b[5], b }; return m; });
+// fountain & street furniture
+const fountain = new THREE.Mesh(new THREE.CylinderGeometry(5, 5.5, 1, 32), new THREE.MeshLambertMaterial({ color: 0x5b6a78 })); fountain.position.set(0, 0.5, 0); scene.add(fountain);
+const water = new THREE.Mesh(new THREE.CylinderGeometry(4.5, 4.5, 0.2, 32), new THREE.MeshLambertMaterial({ color: 0x2b5d80 })); water.position.set(0, 1.0, 0); scene.add(water);
+for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2; box(2.2, 0.5, 0.6, 0x6b5a45, Math.cos(a) * 12, Math.sin(a) * 12).rotation.y = -a; }
+for (let i = 0; i < 12; i++) { const t = new THREE.Mesh(new THREE.ConeGeometry(2, 6, 8), new THREE.MeshLambertMaterial({ color: 0x1f3d2a })); t.position.set(R.uniform(-80, 80), 3, R.pick([-25, 25]) + R.uniform(-3, 3)); scene.add(t); }
+const cars = []; for (let i = 0; i < 7; i++) { const c = box(4.4, 1.5, 1.9, R.pick([0x8a8f99, 0x5a2e2e, 0x2e3f5a, 0xb0b4ba]), -70 + i * 11 + R.uniform(-1, 1), 28 + R.uniform(-1, 1)); cars.push(c); }
+const bus = box(12, 3.2, 2.6, 0x3f5f7a, 40, 18); const shelter = box(6, 2.6, 2, 0x445566, 30, 22);
+// crowd markers (people nearby) — cylinders; counted for exposure
+const people = [];
+for (let i = 0; i < 90; i++) { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1.7, 6), new THREE.MeshLambertMaterial({ color: 0xc9b458 })); let x, z; do { x = R.uniform(-85, 85); z = R.uniform(-30, 70); } while (Math.hypot(x, z) < 8); p.position.set(x, 0.85, z); scene.add(p); people.push(p); }
+// control vehicle (start)
+const cvh = box(6, 2.5, 2.5, 0x1e3a5f, -80, 70); const start = { x: -76, z: 66 };
+
+// ================================================= items (fictional) and hidden truth
+const ITEMS = [];
+function addItem(kind, x, z, truth, vis) {
+  const geo = kind === 'bag' ? new THREE.BoxGeometry(0.8, 0.45, 0.35) : kind === 'box' ? new THREE.BoxGeometry(0.6, 0.5, 0.6) : kind === 'case' ? new THREE.BoxGeometry(0.7, 0.3, 0.5) : new THREE.CylinderGeometry(0.2, 0.2, 0.8, 12);
+  const m = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color: kind === 'bag' ? 0x3b3129 : kind === 'box' ? 0x8b6d45 : kind === 'case' ? 0x1f2933 : 0x6f7a55 }));
+  m.position.set(x, kind === 'cyl' ? 0.4 : 0.25, z); scene.add(m);
+  const it = { mesh: m, kind, x, z, truth, vis, mark: null, info: [], id: 'I' + (ITEMS.length + 1) };
+  m.userData.item = it; ITEMS.push(it); return it;
+}
+const hazardIdx = R.int(0, 2);
+const spotsNear = [[3, 6.5], [-6.8, 1.5], [5.8, -4]];
+const kinds = ['bag', 'box', 'case'];
+spotsNear.forEach((s, i) => addItem(kinds[i], s[0], s[1], i === hazardIdx ? 'threat' : 'benign', null));
+// other everyday items around the square
+for (let i = 0; i < 6; i++) { let x, z; do { x = R.uniform(-60, 60); z = R.uniform(-20, 40); } while (Math.hypot(x, z) < 15); addItem(R.pick(['bag', 'box', 'case', 'cyl']), x, z, 'benign', null); }
+// likely control-point locations and a possible secondary item near one of them
+const CP_SPOTS = [[-40, 20], [30, 30], [-20, -25]];
+const secondary = R.bernoulli(level === 'Beginner' ? 0.35 : 0.6);
+let secItem = null;
+if (secondary) { const sp = R.pick(CP_SPOTS); secItem = addItem('box', sp[0] + R.uniform(-3, 3), sp[1] + R.uniform(-3, 3), 'threat2', null); }
+const hazardR = R.uniform(90, 140); // abstract hazard distance for a credible item at this site
+// visual evidence model: what the robot camera shows for each item
+function visual(it) {
+  const amb = R.bernoulli(LV.ambig);
+  if (it.truth === 'benign') return amb ? 'Closed container; contents not visible.' : R.pick(['Opened: clothing and a water bottle visible.', 'Label with a name and phone number; zip open, books inside.', 'Delivery box with shop tape, torn open, packaging inside.']);
+  return amb ? 'Closed container; contents not visible.' : R.pick(['Container deliberately wedged out of sight; unusual attachments visible.', 'Heavy for its size (sagging handles); modified closure.', 'Placed so it cannot be seen from the concourse; nobody nearby claims it.']);
+}
+function xray(it) { if (it.truth === 'benign') return R.bernoulli(0.9) ? 'Internal image: everyday items only.' : 'Internal image: dense unidentified mass — inconclusive.'; return R.bernoulli(0.88) ? 'Internal image: components inconsistent with ordinary contents.' : 'Internal image: inconclusive.'; }
+function trace(it) { if (it.truth === 'benign') return R.bernoulli(0.06) ? 'Trace ALARM (possible interferent).' : 'No trace alarm.'; return R.bernoulli(0.65) ? 'Trace ALARM.' : 'No trace alarm.'; }
+
+// ================================================= robot
+const robot = new THREE.Group();
+const body = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.5, 0.8), new THREE.MeshLambertMaterial({ color: 0xfb923c })); body.position.y = 0.35; robot.add(body);
+const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.8, 8), new THREE.MeshLambertMaterial({ color: 0xcccccc })); mast.position.set(0.3, 0.9, 0); robot.add(mast);
+const camh = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.18, 0.18), new THREE.MeshLambertMaterial({ color: 0x22d3ee })); camh.position.set(0.3, 1.35, 0); robot.add(camh);
+robot.position.set(start.x, 0, start.z); scene.add(robot);
+let target = null, battery = LV.battery, clock = 0, exposure = 0, cordonR = 0, evacuated = false, sheltered = false, cp = null, swept = false, secFound = false, dist = 0;
+const trail = []; const trailGeom = new THREE.BufferGeometry(); const trailLine = new THREE.Line(trailGeom, new THREE.LineBasicMaterial({ color: 0x22d3ee })); scene.add(trailLine);
+
+// cordon ring
+const ring = new THREE.Mesh(new THREE.RingGeometry(0.98, 1.0, 96), new THREE.MeshBasicMaterial({ color: 0xf87171, side: THREE.DoubleSide, transparent: true, opacity: 0.8 }));
+ring.rotation.x = -Math.PI / 2; ring.position.y = 0.05; ring.visible = false; scene.add(ring);
+const cpMesh = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 0.2, 16), new THREE.MeshBasicMaterial({ color: 0x22d3ee })); cpMesh.visible = false; scene.add(cpMesh);
+
+// ================================================= interaction
+let mode = 'orbit';
+U.$('#tools').querySelectorAll('button[data-mode]').forEach(b => b.onclick = () => { mode = b.dataset.mode; U.$('#tools').querySelectorAll('button[data-mode]').forEach(x => x.classList.toggle('active', x === b)); controls.enabled = true; });
+U.$('#top').onclick = () => { camera.position.set(0.01, 190, 0.01); controls.target.set(0, 0, 10); controls.update(); };
+U.$('#rad').oninput = function () { cordonR = +this.value; U.$('#radv').textContent = cordonR + ' m'; ring.visible = cordonR > 0; ring.scale.set(cordonR, cordonR, 1); evacuated = false; status(); };
+const ray = new THREE.Raycaster(), mouse = new THREE.Vector2();
+let downAt = null;
+renderer.domElement.addEventListener('pointerdown', e => { downAt = [e.clientX, e.clientY]; });
+renderer.domElement.addEventListener('pointerup', e => {
+  if (!downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 5) return; // it was a drag
+  const r = renderer.domElement.getBoundingClientRect();
+  mouse.set((e.clientX - r.left) / r.width * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(mouse, camera);
+  if (mode === 'select') { const hits = ray.intersectObjects(ITEMS.map(i => i.mesh)); if (hits.length) select(hits[0].object.userData.item); return; }
+  const g = ray.intersectObject(ground); if (!g.length) return; const p = g[0].point;
+  if (mode === 'drive') { target = { x: p.x, z: p.z }; logf('Robot tasked to (' + p.x.toFixed(0) + ', ' + p.z.toFixed(0) + ')'); }
+  if (mode === 'cp') { cp = { x: p.x, z: p.z }; swept = false; cpMesh.position.set(p.x, 0.1, p.z); cpMesh.visible = true; logf('Control point set ' + Math.hypot(p.x, p.z).toFixed(0) + ' m from the fountain.'); status(); }
+});
+
+let sel = null;
+function select(it) {
+  sel = it; const d = Math.hypot(robot.position.x - it.x, robot.position.z - it.z);
+  U.$('#itemBox').innerHTML = '<div class="kv"><span class="k">item</span><span>' + it.id + ' (' + it.kind + ')</span><span class="k">robot distance</span><span>' + d.toFixed(1) + ' m</span><span class="k">findings</span><span>' + (it.info.length ? it.info.join('<br>') : '—') + '</span></div>' +
+    '<div class="item-actions" style="margin-top:6px">' +
+    '<button id="iVis"><span>Robot camera inspection (≤ 4 m)</span><span class="mono">2 min · 2 %</span></button>' +
+    '<button id="iX"><span>Robot internal imaging (≤ 1.5 m)</span><span class="mono">6 min · 6 %</span></button>' +
+    '<button id="iT"><span>Robot trace sample (≤ 1 m)</span><span class="mono">3 min · 3 %</span></button>' +
+    '<button id="iH" class="danger"><span>Send a person to look</span><span class="mono">3 min · exposure</span></button>' +
+    '<div class="row"><button id="mH" class="danger">mark hazard</button><button id="mB">mark benign</button><button id="mU">mark unknown</button></div></div>';
+  const need = (maxd, t, b, fn, label) => () => {
+    const dd = Math.hypot(robot.position.x - it.x, robot.position.z - it.z);
+    if (dd > maxd) { logf('Robot too far from ' + it.id + ' (' + dd.toFixed(1) + ' m > ' + maxd + ' m).'); return; }
+    if (battery < b) { logf('Insufficient battery.'); return; }
+    battery -= b; tick(t); const res = fn(it); it.info.push(label + ': ' + res); logf(it.id + ' — ' + label + ': ' + res);
+    if (it === secItem) secFound = true; select(it);
+  };
+  U.$('#iVis').onclick = need(4, 2, 2, visual, 'camera');
+  U.$('#iX').onclick = need(1.5, 6, 6, xray, 'imaging');
+  U.$('#iT').onclick = need(1, 3, 3, trace, 'trace');
+  U.$('#iH').onclick = () => { exposure++; tick(3); const res = visual(it); it.info.push('person: ' + res); logf('<span style="color:var(--yellow)">A person approached ' + it.id + ': ' + res + '</span>'); select(it); };
+  U.$('#mH').onclick = () => { it.mark = 'hazard'; select(it); };
+  U.$('#mB').onclick = () => { it.mark = 'benign'; select(it); };
+  U.$('#mU').onclick = () => { it.mark = 'unknown'; select(it); };
+}
+U.$('#aEvac').onclick = () => { if (!cordonR) { logf('Set a cordon radius first.'); return; } evacuated = true; tick(15); logf('Evacuation inside ' + cordonR + ' m complete.'); };
+U.$('#aShelter').onclick = () => { sheltered = true; tick(5); logf('Occupants of glazed buildings moved away from windows.'); };
+U.$('#aSweep').onclick = () => {
+  if (!cp) { logf('Place a control point first.'); return; } tick(15); swept = true;
+  if (secItem && Math.hypot(cp.x - secItem.x, cp.z - secItem.z) < 15) { secFound = true; logf('<span style="color:var(--red)">Search found an unattended item ' + secItem.id + ' beside your control point. Move the control point.</span>'); }
+  else logf('Control point and approach routes searched: nothing found.');
+};
+function tick(min) { clock += min; status(); }
+function status() {
+  const inside = people.filter(p => Math.hypot(p.position.x - ITEMS[hazardIdx].x, p.position.z - ITEMS[hazardIdx].z) < cordonR).length;
+  const glassIn = buildings.filter(b => b.userData.glass && distToBox(b.userData.b, 0, 0) < Math.max(cordonR, 1) * 1.5).length;
+  U.$('#clock').textContent = '· T+' + clock.toFixed(0) + ' / ' + LV.time + ' min';
+  U.$('#status').innerHTML = [['robot battery', battery.toFixed(0) + ' %'], ['robot odometer', dist.toFixed(0) + ' m'], ['cordon', cordonR ? cordonR + ' m (' + (evacuated ? 'evacuated' : inside + ' people inside') + ')' : 'none'],
+    ['glazed buildings ≤ 1.5 × cordon', glassIn + (sheltered ? ' (sheltered)' : '')], ['control point', cp ? Math.hypot(cp.x, cp.z).toFixed(0) + ' m from fountain' + (swept ? ', searched' : ', NOT searched') : 'none'], ['people sent forward', exposure]]
+    .map(r => '<span class="k">' + r[0] + '</span><span>' + r[1] + '</span>').join('');
+}
+function distToBox(b, x, z) { const dx = Math.max(b[0] - b[2] / 2 - x, 0, x - (b[0] + b[2] / 2)), dz = Math.max(b[1] - b[3] / 2 - z, 0, z - (b[1] + b[3] / 2)); return Math.hypot(dx, dz); }
+
+// labels
+const labels = ITEMS.map(it => { const d = U.el('div', { class: 'lbl' }, it.id); view.appendChild(d); return d; });
+function place() {
+  const r = renderer.domElement.getBoundingClientRect();
+  ITEMS.forEach((it, i) => {
+    const v = it.mesh.position.clone(); v.y += 0.6; v.project(camera);
+    const show = v.z < 1 && Math.hypot(camera.position.x - it.x, camera.position.z - it.z) < 140;
+    labels[i].style.display = show ? 'block' : 'none';
+    labels[i].style.left = ((v.x + 1) / 2 * r.width) + 'px'; labels[i].style.top = ((1 - v.y) / 2 * r.height) + 'px';
+    labels[i].className = 'lbl' + (it.mark === 'hazard' ? ' h' : it.mark === 'benign' ? ' b' : it.mark === 'unknown' ? ' u' : '');
+  });
+}
+
+// ================================================= loop
+function resize() { const w = view.clientWidth, h = view.clientHeight; renderer.setSize(w, h, false); renderer.domElement.style.width = w + 'px'; renderer.domElement.style.height = h + 'px'; camera.aspect = w / h; camera.updateProjectionMatrix(); }
+window.addEventListener('resize', resize); resize();
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(0.1, (now - last) / 1000); last = now;
+  if (target && battery > 0) {
+    const dx = target.x - robot.position.x, dz = target.z - robot.position.z, d = Math.hypot(dx, dz);
+    if (d < 0.3) { target = null; logf('Robot arrived.'); }
+    else {
+      const sp = Math.min(d, 8 * dt); // 8 m per real second ≈ 1.2 m/s robot at 6.7× time compression
+      const nx = robot.position.x + dx / d * sp, nz = robot.position.z + dz / d * sp;
+      const blocked = buildings.some(b => distToBox(b.userData.b, nx, nz) < 0.8) || Math.hypot(nx, nz) < 5.8;
+      if (blocked) { target = null; logf('Path blocked — pick a waypoint around the obstacle.'); }
+      else { robot.position.x = nx; robot.position.z = nz; robot.rotation.y = -Math.atan2(dz, dx); dist += sp; battery -= sp * 0.09; clock += sp / 1.2 / 60; trail.push(new THREE.Vector3(nx, 0.1, nz)); if (trail.length % 5 === 0) trailGeom.setFromPoints(trail); status(); }
+    }
+  }
+  controls.update(); renderer.render(scene, camera); place();
+  if (clock >= LV.time) { finish(); return; }
+  requestAnimationFrame(loop);
+}
+status(); logf('Call: a suspicious item has been reported near the fountain. People are still in the square.'); requestAnimationFrame(loop);
+
+// ================================================= debrief
+let finished = false;
+function finish() {
+  if (finished) return; finished = true;
+  const hz = ITEMS[hazardIdx], candidates = ITEMS.slice(0, 3);
+  const marksOk = candidates.filter(it => (it.truth === 'threat' && (it.mark === 'hazard' || it.mark === 'unknown')) || (it.truth === 'benign' && (it.mark === 'benign' || it.mark === 'unknown'))).length;
+  const unsafeMark = candidates.some(it => it.truth === 'threat' && it.mark === 'benign');
+  const inspected = candidates.filter(it => it.info.length).length;
+  let safety = 100;
+  if (cordonR < hazardR * 0.8) safety -= 30; if (!evacuated) safety -= 20; if (exposure) safety -= 15 * exposure;
+  if (secItem && !swept) safety -= 15; if (cp && Math.hypot(cp.x - hz.x, cp.z - hz.z) < cordonR) safety -= 20; if (unsafeMark) safety -= 30;
+  const info = 100 * (inspected / 3 * 0.6 + (hz.info.length ? 0.2 : 0) + (hz.info.some(s => /imaging|trace/.test(s)) ? 0.2 : 0));
+  const unc = 100 * marksOk / 3;
+  const res = U.clamp(100 * (0.5 * battery / LV.battery + 0.5 * (1 - clock / LV.time)) * (inspected ? 1 : 0.3), 0, 100);
+  const expo = U.clamp(100 - 35 * exposure, 0, 100);
+  EOD.debrief.show({ title: 'Scene assessment', seed, level,
+    scores: [{ label: 'Safety', value: U.clamp(safety, 0, 100) }, { label: 'Information quality', value: info, note: inspected + '/3 candidate items inspected' }, { label: 'Uncertainty handling', value: unc, note: marksOk + '/3 candidate marks defensible' },
+      { label: 'Resources', value: res }, { label: 'Avoiding exposure', value: expo }],
+    observed: ITEMS.filter(it => it.info.length).map(it => it.id + ': ' + it.info.join(' | ')),
+    decided: ['Cordon ' + cordonR + ' m' + (evacuated ? ' (evacuated)' : ' (not evacuated)') + (sheltered ? '; glazed buildings sheltered' : '') + '.', 'Control point ' + (cp ? Math.hypot(cp.x - hz.x, cp.z - hz.z).toFixed(0) + ' m from the credible item, ' + (swept ? 'searched' : 'not searched') : 'not set') + '.',
+      'Marks: ' + ITEMS.filter(it => it.mark).map(it => it.id + '=' + it.mark).join(', ')],
+    missed: [].concat(cordonR < hazardR * 0.8 ? ['Cordon smaller than the hazard distance for a credible item here (~' + hazardR.toFixed(0) + ' m).'] : [], !evacuated ? ['People were left inside the cordon.'] : [],
+      secItem && !secFound ? ['A second item (' + secItem.id + ') lay near a likely control point; control points and approach routes should be searched before use.'] : [],
+      exposure ? ['People were sent forward when the robot could do the job.'] : [], unsafeMark ? ['The credible item (' + hz.id + ') was marked benign.'] : [],
+      inspected < 3 ? ['Not every candidate item near the fountain was inspected — the reported item may not be the only one.'] : []),
+    uncertainty: ['Hidden truth: ' + hz.id + ' was the credible hazard' + (secItem ? '; ' + secItem.id + ' was a secondary item' : '') + '. Visual evidence was ambiguous ' + Math.round(LV.ambig * 100) + ' % of the time; imaging and trace have false positives and negatives.'],
+    reasoning: ['Isolate first (cordon, evacuate or shelter), then gather information remotely; a report is a hypothesis about location and number.',
+      'Place the control point out of line of sight and outside the cordon, and search it — responders gather predictably.', 'Glazed facades inside ~1.5× the cordon are an injury hazard; shelter-in-place away from windows is often safer than moving people past the item.', '"Unknown" is a defensible mark; "benign" needs evidence.'],
+    physics: ['Cordon distance reflects blast and fragment hazard distances (04.4), inflated for uncertainty in the abstract yield (07.2).'],
+    engineering: ['Robot tasking under time and battery budgets is a value-of-information scheduling problem (07.1).'],
+    links: [{ href: EOD.COURSE + 'lessons/stage-07/lesson-02', text: '07.2 Incident management' }, { href: EOD.COURSE + 'lessons/stage-07/lesson-01', text: '07.1 Decisions under uncertainty' }, { href: EOD.COURSE + 'lessons/stage-00/lesson-02', text: '00.2 How EOD organisations operate' }]
+  });
+  // reveal
+  hz.mesh.material.color.set(0xff3333); if (secItem) secItem.mesh.material.color.set(0xff9933);
+  const hr = new THREE.Mesh(new THREE.RingGeometry(0.99, 1.0, 96), new THREE.MeshBasicMaterial({ color: 0x4ade80, side: THREE.DoubleSide })); hr.rotation.x = -Math.PI / 2; hr.position.set(hz.x, 0.06, hz.z); hr.scale.set(hazardR, hazardR, 1); scene.add(hr);
+  renderer.render(scene, camera);
+}
+U.$('#finish').onclick = finish;
+</script>
+</body>
+</html>
