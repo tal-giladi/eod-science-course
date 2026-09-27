@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sim D · Blast Physics</title>
+<link rel="stylesheet" href="../common/sim.css">
+<style>
+  .layout { grid-template-columns: 300px 1fr 1fr; }
+  .span2 { grid-column: span 2; }
+  .tabs button.active { border-color: var(--accent); color: var(--accent); }
+  #field { cursor: crosshair; }
+  .qcard { border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; margin: 8px 0; background: #0a1017; }
+  .qcard .q { margin-bottom: 6px; line-height: 1.45; }
+  .qcard input { width: 140px; }
+  @media (max-width: 1100px) { .layout { grid-template-columns: 1fr 1fr; } .span2 { grid-column: span 2; } }
+</style>
+</head>
+<body>
+<div class="layout" id="layout">
+  <!-- controls -->
+  <div class="panel" style="grid-row: span 3">
+    <h2>Source &amp; geometry</h2>
+    <div id="sliders"></div>
+    <div class="row"><label style="width:100%">Burst geometry</label>
+      <select id="burst"><option value="1">Free air (spherical)</option><option value="1.8">Surface burst (hemispherical, ×1.8 yield)</option></select></div>
+    <div class="row"><label style="width:100%">Ambient atmosphere (ISA)</label>
+      <select id="alt"><option value="0">Sea level</option><option value="1500">1500 m</option><option value="3000">3000 m</option></select></div>
+    <div class="row"><label><input type="checkbox" id="wall" checked> rigid wall at the gauge (normal reflection)</label></div>
+    <h2 style="margin-top:14px">Live equations</h2>
+    <div class="eq" id="eqs"></div>
+    <p class="hint">Yields are abstract <b>yield units (YU)</b>. The curves are the published Kinney–Graham
+      free-air fits evaluated at scaled distance Z; the object of study is <i>scaling and effects</i>, not any charge.</p>
+  </div>
+
+  <div class="panel">
+    <h2>Gauge · pressure–time history</h2>
+    <canvas id="pt"></canvas>
+    <div class="hint">Friedlander waveform p(t) = p<sub>s</sub>(1 − t/t<sub>d</sub>)e<sup>−bt/t<sub>d</sub></sup>; shaded area = positive-phase impulse. Negative phase follows t &gt; t<sub>d</sub>.</div>
+  </div>
+  <div class="panel">
+    <h2>Scaled distance · peak pressures</h2>
+    <canvas id="pz"></canvas>
+    <div class="hint">Log–log. Incident p<sub>s</sub>, reflected p<sub>r</sub> and dynamic q versus Z = R/W<sup>1/3</sup>. The dot is your gauge.</div>
+  </div>
+
+  <div class="panel">
+    <h2>Wave field · 2D Euler solver
+      <span class="tabs" style="float:right">
+        <select id="scene">
+          <option value="open">Open field</option>
+          <option value="wall">Wall (reflection)</option>
+          <option value="corner">Building corner (shadow)</option>
+          <option value="street">Street canyon (channelling)</option>
+          <option value="room">Room with vent (confinement)</option>
+        </select>
+        <select id="fmode"><option value="p">overpressure</option><option value="peak">peak map</option></select>
+        <button id="play" class="primary">▶ run</button>
+        <button id="reset">reset</button>
+      </span></h2>
+    <canvas id="field"></canvas>
+    <div class="hint">Click to move probe P1, shift-click for P2. Colour: blue = below ambient (negative phase), orange→white = overpressure. Non-dimensional units.</div>
+  </div>
+  <div class="panel">
+    <h2>Probe traces</h2>
+    <canvas id="probe"></canvas>
+    <div class="readout" id="probeRead"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Structure · SDOF response</h2>
+    <div class="row">
+      <select id="elem">
+        <option value="0.005">Light cladding panel (T = 5 ms)</option>
+        <option value="0.02" selected>Masonry-like wall (T = 20 ms)</option>
+        <option value="0.08">Stiff heavy wall (T = 80 ms)</option>
+      </select>
+      <span class="tag" id="regime"></span>
+    </div>
+    <canvas id="sdof"></canvas>
+    <div class="hint">m ẍ + k x = A·p<sub>r</sub>(t). Displacement normalised by the static deflection under p<sub>r</sub>. Dynamic load factor DLF = x<sub>max</sub>/x<sub>st</sub>.</div>
+  </div>
+  <div class="panel">
+    <h2>Pressure–impulse diagram</h2>
+    <canvas id="pi"></canvas>
+    <div class="hint">Iso-damage curves (three displacement thresholds) for the selected element; asymptotes: impulsive I* = x<sub>c</sub>√(km)/A, quasi-static P* = k x<sub>c</sub>/(2A). Dot = reflected load at the gauge.</div>
+  </div>
+
+  <div class="panel span2" id="challengePanel">
+    <h2>Challenge mode · predict before you look</h2>
+    <p class="hint">Five problems generated from the seed at the selected difficulty. At Advanced/Expert the live equation panel and plot annotations are hidden while the challenge is open. Answers are revealed only in the debrief.</p>
+    <div class="row"><button class="primary" id="startCh">Start challenge</button><button id="submitCh" disabled>Submit answers → debrief</button></div>
+    <div id="questions"></div>
+  </div>
+</div>
+
+<script src="../common/eod.js"></script>
+<script src="../common/blast.js"></script>
+<script src="../common/euler2d.js"></script>
+<script>
+(function () {
+  var U = EOD.util, B = BLAST;
+  var level = 'Beginner';
+  var seed = EOD.seedFromUrl();
+  var diff = EOD.ui.difficultySelect(function (v) { level = v; }, 'Beginner');
+  level = diff.value;
+  EOD.ui.header('D', 'Blast Physics', 'pressure · distance · reflection · confinement · structural response', [U.el('span', { class: 'hint' }, 'difficulty'), diff]);
+
+  var ISA = { 0: { p0: 101.325, a0: 340.3 }, 1500: { p0: 84.56, a0: 334.4 }, 3000: { p0: 70.12, a0: 328.6 } };
+  var state = { W: 10, R: 20, surf: 1, alt: 0, wall: true, hideEq: false };
+
+  var sl = U.$('#sliders');
+  var logW = EOD.ui.slider(sl, 'Yield W', -1, 3, 0.01, Math.log10(state.W), function (v) { state.W = Math.pow(10, v); update(); }, function (v) { return U.fmt(Math.pow(10, v), 2) + ' YU'; });
+  var logR = EOD.ui.slider(sl, 'Standoff R', 0, 2.5, 0.005, Math.log10(state.R), function (v) { state.R = Math.pow(10, v); update(); }, function (v) { return U.fmt(Math.pow(10, v), 1) + ' m'; });
+  U.$('#burst').onchange = function (e) { state.surf = +e.target.value; update(); };
+  U.$('#alt').onchange = function (e) { state.alt = +e.target.value; update(); };
+  U.$('#wall').onchange = function (e) { state.wall = e.target.checked; update(); };
+  U.$('#elem').onchange = update;
+
+  function current() {
+    var a = ISA[state.alt];
+    return B.predict(state.W, state.R, { surfaceFactor: state.surf, p0: a.p0, a0: a.a0 });
+  }
+
+  function update() {
+    var g = current(), a = ISA[state.alt];
+    // ---------- p(t)
+    var tEnd = g.td * 3, n = 400, ts = [], pi = [], pr = [];
+    for (var i = 0; i <= n; i++) {
+      var t = tEnd * i / n; ts.push(t + g.ta);
+      pi.push(B.friedlander(t, g.ps, g.td, g.b));
+      pr.push(B.friedlander(t, g.pr, g.td, g.b));
+    }
+    var ymax = (state.wall ? g.pr : g.ps) * 1.15, ymin = -0.25 * ymax;
+    var fillX = [], fillY = [];
+    for (var j = 0; j <= 200; j++) { var tt = g.td * j / 200; fillX.push(tt + g.ta); fillY.push(B.friedlander(tt, state.wall ? g.pr : g.ps, g.td, g.b)); }
+    var series = [{ x: [g.ta * 0.8, g.ta].concat(ts), y: [0, 0].concat(pi), color: '#fb923c', label: 'incident p_s' }];
+    if (state.wall) series.push({ x: [g.ta * 0.8, g.ta].concat(ts), y: [0, 0].concat(pr), color: '#22d3ee', label: 'reflected p_r' });
+    EOD.plot(U.$('#pt'), { x: [g.ta * 0.8, g.ta + tEnd], y: [ymin, ymax], xlabel: 'time since release [ms]', ylabel: 'overpressure [kPa]',
+      series: series, fills: [{ x: fillX, y: fillY, color: state.wall ? 'rgba(34,211,238,.15)' : 'rgba(251,146,60,.15)' }],
+      hlines: [{ y: 0, color: '#334' }], vlines: state.hideEq ? [] : [{ x: g.ta, color: '#556', label: 't_a' }, { x: g.ta + g.td, color: '#556', label: 't_a + t_d' }], height: 250 });
+    // ---------- p(Z)
+    var Zs = [], PS = [], PR = [], Q = [];
+    for (var k = 0; k <= 200; k++) {
+      var Z = Math.pow(10, -1 + 3 * k / 200); Zs.push(Z);
+      var ps = B.kgOverpressureRatio(Z) * a.p0; PS.push(ps); PR.push(B.reflectedOverpressure(ps, a.p0)); Q.push(B.dynamicPressure(ps, a.p0));
+    }
+    EOD.plot(U.$('#pz'), { x: [0.1, 100], y: [0.1, 1e5], logX: true, logY: true, xlabel: 'scaled distance Z [m·YU^-1/3]', ylabel: 'peak pressure [kPa]',
+      series: [{ x: Zs, y: PS, color: '#fb923c', label: 'incident p_s' }, { x: Zs, y: PR, color: '#22d3ee', label: 'reflected p_r' }, { x: Zs, y: Q, color: '#a78bfa', label: 'dynamic q' }],
+      points: [{ x: g.Z, y: g.ps, color: '#fff', r: 5 }].concat(state.wall ? [{ x: g.Z, y: g.pr, color: '#22d3ee', r: 4 }] : []),
+      hlines: [{ y: a.p0, color: '#445', label: 'p0 (ambient)' }], height: 250 });
+    // ---------- equations
+    var eq = state.hideEq ? '(hidden during challenge)' :
+      'Z   = R / W_eff^(1/3)          = ' + U.fmt(state.R, 2) + ' / ' + U.fmt(g.We, 2) + '^(1/3) = ' + U.fmt(g.Z, 3) + ' m/YU^1/3\n' +
+      'p_s = p0·f_KG(Z)                = ' + U.fmt(g.ps, 2) + ' kPa   (' + U.fmt(g.ps / a.p0, 3) + ' atm)\n' +
+      'M   = √(1 + (γ+1)/(2γ)·p_s/p0)  = ' + U.fmt(g.M, 3) + '   U = M·a0 = ' + U.fmt(g.U, 0) + ' m/s\n' +
+      'q   = 5/2·p_s²/(7p0 + p_s)      = ' + U.fmt(g.q, 2) + ' kPa\n' +
+      'p_r = 2p_s(7p0+4p_s)/(7p0+p_s)  = ' + U.fmt(g.pr, 2) + ' kPa   C_r = ' + U.fmt(g.Cr, 2) + '\n' +
+      't_a = ∫dr/U(r)                  = ' + U.fmt(g.ta, 2) + ' ms\n' +
+      't_d (KG fit)                    = ' + U.fmt(g.td, 2) + ' ms\n' +
+      'i_s = p_s·t_d[1/b − (1−e^−b)/b²] = ' + U.fmt(g.i, 1) + ' kPa·ms  (b = ' + U.fmt(g.b, 2) + ')\n' +
+      'i_r ≈ same shape at p_r         = ' + U.fmt(g.ir, 1) + ' kPa·ms';
+    U.$('#eqs').textContent = eq;
+    updateStructure(g);
+  }
+
+  // ---------- SDOF & P–I
+  function updateStructure(g) {
+    var T = +U.$('#elem').value, m = 100, k = m * Math.pow(2 * Math.PI / T, 2), A = 1; // per m² panel: m [kg/m²]
+    var P = (state.wall ? g.pr : g.ps) * 1000, td = g.td / 1000, b = g.b;
+    var load = function (t) { return t < 0 ? 0 : B.friedlander(t, P, td, b) ; };
+    var r = B.sdofResponse({ m: m, k: k, A: A, load: load, tEnd: Math.max(3 * T, 2.5 * td) });
+    var xst = P / k, xs = r.x.map(function (x) { return x / xst; }), tms = r.t.map(function (t) { return t * 1000; });
+    var lp = r.t.map(function (t) { return load(t) / P; });
+    var wtd = 2 * Math.PI / T * td;
+    var reg = wtd < 0.4 ? ['impulsive', 'ok'] : wtd > 40 ? ['quasi-static', 'warn'] : ['dynamic', 'bad'];
+    var tag = U.$('#regime'); tag.className = 'tag ' + reg[1]; tag.textContent = 'ω·t_d = ' + U.fmt(wtd, 2) + ' → ' + reg[0] + ' · DLF = ' + U.fmt(r.xmax / xst, 2);
+    var ymax = Math.max(2.1, r.xmax / xst * 1.1);
+    EOD.plot(U.$('#sdof'), { x: [0, tms[tms.length - 1]], y: [-ymax, ymax], xlabel: 'time [ms]', ylabel: 'x / x_static',
+      series: [{ x: tms, y: lp, color: '#fb923c', label: 'load / peak' }, { x: tms, y: xs, color: '#4ade80', label: 'displacement' }],
+      hlines: [{ y: 0, color: '#334' }, { y: 2, color: '#445', label: 'DLF 2 (step load limit)' }], height: 220 });
+    // P–I with three thresholds (abstract "damage levels" as multiples of a reference deflection)
+    var xref = 0.01, curves = [], colors = ['#4ade80', '#facc15', '#f87171'], labels = ['low', 'moderate', 'severe'];
+    var allP = [], allI = [];
+    [1, 3, 10].forEach(function (mult, ci) {
+      var pc = B.piCurve(m, k, xref * mult, 28);
+      var xsI = pc.curve.map(function (c) { return c.I / 1000; }), ysP = pc.curve.map(function (c) { return c.P / 1000; });
+      allP = allP.concat(ysP); allI = allI.concat(xsI);
+      curves.push({ x: xsI, y: ysP, color: colors[ci], label: labels[ci] + ' (x_c=' + (xref * mult * 100) + ' cm)' });
+    });
+    var Ipt = (state.wall ? g.ir : g.i), Ppt = state.wall ? g.pr : g.ps;
+    var Imin = Math.min.apply(null, allI.concat([Ipt])) / 3, Imax = Math.max.apply(null, allI.concat([Ipt])) * 3;
+    var Pmin = Math.min.apply(null, allP.concat([Ppt])) / 3, Pmax = Math.max.apply(null, allP.concat([Ppt])) * 3;
+    EOD.plot(U.$('#pi'), { x: [Imin, Imax], y: [Pmin, Pmax], logX: true, logY: true, xlabel: 'impulse [kPa·ms]', ylabel: 'peak pressure [kPa]',
+      series: curves, points: [{ x: Ipt, y: Ppt, color: '#fff', r: 5, label: 'load' }], height: 220 });
+  }
+
+  // ---------- 2D field
+  var NX = 220, NY = 130, sim = new Euler2D(NX, NY), running = false, probes = [{ i: 150, j: 65 }, { i: 110, j: 100 }], traces = [[], []];
+  function buildScene() {
+    var sc = U.$('#scene').value; sim.solid.fill(0); sim.reset(); traces = [[], []];
+    function box(i0, j0, i1, j1) { for (var j = j0; j <= j1; j++) for (var i = i0; i <= i1; i++) if (i >= 0 && j >= 0 && i < NX && j < NY) sim.solid[sim.idx(i, j)] = 1; }
+    var src = { i: 50, j: 65 };
+    if (sc === 'wall') { box(140, 25, 144, 105); probes[0] = { i: 138, j: 65 }; probes[1] = { i: 160, j: 65 }; }
+    if (sc === 'corner') { box(110, 0, 200, 70); probes[0] = { i: 100, j: 90 }; probes[1] = { i: 150, j: 80 }; }
+    if (sc === 'street') { box(20, 0, 219, 50); box(20, 80, 219, 129); src = { i: 40, j: 65 }; probes[0] = { i: 120, j: 65 }; probes[1] = { i: 180, j: 65 }; }
+    if (sc === 'open') { probes[0] = { i: 110, j: 65 }; probes[1] = { i: 170, j: 65 }; }
+    if (sc === 'room') { box(20, 30, 23, 100); box(20, 30, 100, 33); box(20, 97, 100, 100); box(97, 30, 100, 55); box(97, 75, 100, 100); src = { i: 55, j: 65 }; probes[0] = { i: 80, j: 45 }; probes[1] = { i: 150, j: 65 }; }
+    sim.source(src.i, src.j, 5, 30, 6);
+  }
+  function drawField() {
+    var cv = U.$('#field'); var g = EOD.hidpi(cv, Math.round((cv.clientWidth || 600) * NY / NX));
+    sim.render(g.ctx, g.w, g.h, U.$('#fmode').value, U.$('#fmode').value === 'peak' ? 3 : 1.5);
+    var sx = g.w / NX, sy = g.h / NY;
+    probes.forEach(function (p, n) {
+      g.ctx.strokeStyle = n ? '#a78bfa' : '#22d3ee'; g.ctx.lineWidth = 2;
+      g.ctx.beginPath(); g.ctx.arc((p.i + 0.5) * sx, (NY - p.j - 0.5) * sy, 5, 0, 2 * Math.PI); g.ctx.stroke();
+      g.ctx.fillStyle = g.ctx.strokeStyle; g.ctx.font = '11px monospace'; g.ctx.fillText('P' + (n + 1), (p.i + 1) * sx + 6, (NY - p.j) * sy - 6);
+    });
+    g.ctx.fillStyle = '#9fb0c6'; g.ctx.font = '11px monospace'; g.ctx.fillText('t = ' + sim.t.toFixed(1), 8, 14);
+  }
+  function drawProbes() {
+    var all = traces[0].concat(traces[1]);
+    var tmax = Math.max(10, all.length ? Math.max.apply(null, all.map(function (s) { return s[0]; })) : 10);
+    var vals = all.map(function (s) { return s[1]; });
+    var ymax = Math.max(0.2, vals.length ? Math.max.apply(null, vals) * 1.1 : 1), ymin = Math.min(-0.1, vals.length ? Math.min.apply(null, vals) * 1.1 : -0.1);
+    EOD.plot(U.$('#probe'), { x: [0, tmax], y: [ymin, ymax], xlabel: 'time (non-dim)', ylabel: 'Δp / p0',
+      series: traces.map(function (tr, n) { return { x: tr.map(function (s) { return s[0]; }), y: tr.map(function (s) { return s[1]; }), color: n ? '#a78bfa' : '#22d3ee', label: 'P' + (n + 1) }; }),
+      hlines: [{ y: 0, color: '#334' }], height: 200 });
+    var txt = probes.map(function (p, n) {
+      var tr = traces[n], pk = tr.reduce(function (a, s) { return Math.max(a, s[1]); }, 0);
+      var imp = 0; for (var q = 1; q < tr.length; q++) if (tr[q][1] > 0) imp += tr[q][1] * (tr[q][0] - tr[q - 1][0]);
+      return 'P' + (n + 1) + ' peak Δp/p0 = ' + pk.toFixed(3) + '   positive impulse = ' + imp.toFixed(3);
+    }).join('\n');
+    U.$('#probeRead').textContent = txt;
+  }
+  function tick() {
+    if (running) {
+      for (var s = 0; s < 10; s++) {
+        sim.step(0.4);
+        probes.forEach(function (p, n) { traces[n].push([sim.t, sim.pressure(sim.idx(p.i, p.j)) - 1]); });
+      }
+      if (sim.t > 140) { running = false; U.$('#play').textContent = '▶ run'; }
+      drawField(); drawProbes();
+    }
+    requestAnimationFrame(tick);
+  }
+  U.$('#play').onclick = function () { running = !running; this.textContent = running ? '❚❚ pause' : '▶ run'; };
+  U.$('#reset').onclick = function () { buildScene(); drawField(); drawProbes(); };
+  U.$('#scene').onchange = function () { buildScene(); drawField(); drawProbes(); };
+  U.$('#fmode').onchange = drawField;
+  U.$('#field').addEventListener('click', function (e) {
+    var r = this.getBoundingClientRect(), i = Math.floor((e.clientX - r.left) / r.width * NX), j = NY - 1 - Math.floor((e.clientY - r.top) / r.height * NY);
+    if (sim.solid[sim.idx(i, j)]) return;
+    probes[e.shiftKey ? 1 : 0] = { i: i, j: j }; traces[e.shiftKey ? 1 : 0] = []; drawField(); drawProbes();
+  });
+
+  // ---------- challenge mode
+  var questions = [];
+  var TOL = { Beginner: 0.15, Intermediate: 0.10, Advanced: 0.05, Expert: 0.03 };
+  function makeQuestions() {
+    var rnd = EOD.rng(seed), p0 = 101.325, qs = [];
+    var W1 = +(rnd.uniform(2, 50)).toFixed(1), R1 = +(rnd.uniform(8, 40)).toFixed(1), f = rnd.pick([2, 4, 8, 10]);
+    qs.push({ q: 'A gauge at R = ' + R1 + ' m from a free-air release of W = ' + W1 + ' YU records some peak overpressure. The yield is multiplied by ' + f + '. At what range R (m) would the <b>same peak overpressure</b> be recorded?',
+      a: R1 * Math.cbrt(f), unit: 'm', why: 'Hopkinson–Cranz: equal Z = R/W^(1/3) ⇒ equal p_s. R₂ = R₁·(W₂/W₁)^(1/3) = ' + R1 + '·' + f + '^(1/3).', link: 'lessons/stage-01/lesson-05' });
+    var ps = +(rnd.uniform(15, 300)).toFixed(0);
+    qs.push({ q: 'An incident shock with peak overpressure p_s = ' + ps + ' kPa (p0 = 101.3 kPa, γ = 1.4) strikes a rigid wall head-on. What is the peak <b>reflected</b> overpressure (kPa)?',
+      a: B.reflectedOverpressure(ps, p0), unit: 'kPa', why: 'p_r = 2p_s(7p0 + 4p_s)/(7p0 + p_s). Weak shocks reflect with factor → 2 (acoustic), strong ones → 8 (ideal gas).', link: 'lessons/stage-01/lesson-04' });
+    var ps2 = +(rnd.uniform(20, 500)).toFixed(0);
+    qs.push({ q: 'For the same atmosphere, a shock has p_s = ' + ps2 + ' kPa. What is its propagation speed U (m/s), with a0 = 340.3 m/s?',
+      a: B.machFromOverpressure(ps2, p0) * 340.3, unit: 'm/s', why: 'Invert Rankine–Hugoniot: M = √(1 + (γ+1)/(2γ)·p_s/p0); U = M·a0. Stronger shocks outrun sound.', link: 'lessons/stage-01/lesson-03' });
+    var Wm = +(rnd.uniform(0.2, 1)).toFixed(2), Wf = rnd.pick([125, 216, 343, 512, 1000]), Rm = +(rnd.uniform(2, 6)).toFixed(2), tdm = +(rnd.uniform(1, 4)).toFixed(2);
+    qs.push({ q: 'A small-scale experiment with ' + Wm + ' YU measures a positive-phase duration of ' + tdm + ' ms at ' + Rm + ' m. What duration (ms) is expected at the <b>scaled</b> position for a ' + Wf + ' YU event (same atmosphere)?',
+      a: tdm * Math.cbrt(Wf / Wm), unit: 'ms', why: 'Cube-root scaling applies to times and impulses too: t₂ = t₁·(W₂/W₁)^(1/3), at R₂ = R₁·(W₂/W₁)^(1/3).', link: 'lessons/stage-01/lesson-05' });
+    var T = rnd.pick([5, 10, 20, 50]), td = +(rnd.uniform(0.2, 200)).toFixed(1);
+    var wtd = 2 * Math.PI / T * td;
+    qs.push({ q: 'A structural element with natural period T = ' + T + ' ms is loaded by a pulse of duration t_d = ' + td + ' ms. Enter ω·t_d (dimensionless). Then think: impulsive (ω·t_d &lt; 0.4), dynamic, or quasi-static (&gt; 40)?',
+      a: wtd, unit: '', why: 'ω = 2π/T. ω·t_d = ' + U.fmt(wtd, 2) + ' → ' + (wtd < 0.4 ? 'impulsive: damage governed by impulse' : wtd > 40 ? 'quasi-static: damage governed by peak pressure' : 'dynamic: both matter') + '.', link: 'lessons/stage-01/lesson-06' });
+    return qs;
+  }
+  U.$('#startCh').onclick = function () {
+    questions = makeQuestions();
+    state.hideEq = level === 'Advanced' || level === 'Expert'; update();
+    var host = U.$('#questions'); host.innerHTML = '';
+    questions.forEach(function (q, n) {
+      var c = U.el('div', { class: 'qcard' }, '<div class="q"><b>Q' + (n + 1) + '.</b> ' + q.q + '</div><input type="number" step="any" id="ans' + n + '"> <span class="hint">' + q.unit + '</span>');
+      host.appendChild(c);
+    });
+    U.$('#submitCh').disabled = false; this.disabled = true;
+  };
+  U.$('#submitCh').onclick = function () {
+    var tol = TOL[level], ok = 0, observed = [], decided = [], missed = [];
+    questions.forEach(function (q, n) {
+      var v = parseFloat(U.$('#ans' + n).value), err = Math.abs(v - q.a) / Math.abs(q.a), good = isFinite(v) && err <= tol;
+      if (good) ok++;
+      observed.push('Q' + (n + 1) + ': ' + q.q);
+      decided.push('Q' + (n + 1) + ': you answered ' + (isFinite(v) ? U.fmt(v, 3) : '—') + ' ' + q.unit + ' — correct ' + U.fmt(q.a, 3) + ' ' + q.unit + (good ? ' ✓' : ' ✗ (' + (isFinite(err) ? Math.round(err * 100) + '% off' : 'blank') + ')'));
+      if (!good) missed.push('Q' + (n + 1) + ': ' + q.why + ' <a target="_top" href="' + EOD.COURSE + q.link + '">review</a>');
+    });
+    state.hideEq = false; update();
+    EOD.debrief.show({ title: 'Blast physics challenge', seed: seed, level: level,
+      scores: [{ label: 'Correct within ±' + Math.round(tol * 100) + '%', value: 100 * ok / questions.length, note: ok + ' / ' + questions.length }],
+      observed: observed, decided: decided, missed: missed.length ? missed : ['Nothing — every answer within tolerance.'],
+      uncertainty: ['Empirical free-air fits (Kinney–Graham, Kingery–Bulmash) scatter by roughly ±10–30% against trials, more in the near field.',
+        'Surface-burst yield factors of 1.6–2.0 depend on ground properties; 1.8 is a common engineering value.',
+        'Ideal-gas reflection (factor ≤ 8) underestimates reflection for very strong shocks where real-gas effects matter.'],
+      reasoning: ['Protective engineering uses scaled distance so one set of curves serves every yield — and applies conservative factors on top.',
+        'Reflected, not incident, pressure loads a facing surface; ignoring reflection underestimates the load by 2–8×.',
+        'Whether peak pressure or impulse governs damage depends on the target\'s natural period — the same blast can be "impulsive" for a wall and "quasi-static" for a window.'],
+      physics: ['Hopkinson–Cranz cube-root scaling (dimensional analysis + geometric similarity).', 'Rankine–Hugoniot jump conditions for a normal shock in an ideal gas.', 'Friedlander waveform and positive-phase impulse.', 'SDOF oscillator response to transient loads; ω·t_d as the regime parameter.'],
+      engineering: ['P–I diagrams summarise a component\'s vulnerability for all pulse shapes with two asymptotes.', 'Scale-model testing is legitimate precisely because of cube-root scaling (with Sachs corrections for ambient).'],
+      links: [{ href: EOD.COURSE + 'lessons/stage-01/lesson-03', text: '01.3 Acoustics → shocks' }, { href: EOD.COURSE + 'lessons/stage-01/lesson-05', text: '01.5 Scaling laws' },
+        { href: EOD.COURSE + 'lessons/stage-04/lesson-01', text: '04.1 Anatomy of a blast wave' }, { href: EOD.COURSE + 'lessons/stage-04/lesson-03', text: '04.3 Structural effects' }],
+      onClose: function () { U.$('#startCh').disabled = false; U.$('#submitCh').disabled = true; seed = Math.floor(Math.random() * 1e9); }
+    });
+  };
+
+  window.addEventListener('resize', function () { update(); drawField(); drawProbes(); });
+  buildScene(); update(); drawField(); drawProbes(); tick();
+})();
+</script>
+</body>
+</html>

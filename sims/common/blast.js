@@ -57,7 +57,7 @@
     if (R <= r0) return 0;
     for (var i = 0; i < n; i++) {
       var r = r0 + (i + 0.5) * dr;
-      var ps = kgOverpressureRatio(r / Math.cbrt(W)) * p0;
+      var ps = kgOverpressureRatio(r / Math.cbrt(W) * Math.cbrt(p0 / P0)) * p0;
       t += dr / (a0 * machFromOverpressure(ps, p0));
     }
     return t * 1000;
@@ -89,12 +89,17 @@
     var p0 = opts.p0 || P0, a0 = opts.a0 || A0;
     var We = W * (opts.surfaceFactor || 1);
     var cw = Math.cbrt(We);
-    var Z = R / cw;
-    // Sachs scaling for non-standard ambient: ps scales with p0, times with (p0/P0)^(-1/3)(a0/A0)^-1
-    var ps = kgOverpressureRatio(Z) * p0;                       // kPa
-    var td = kgDurationScaled(Z) * cw;                           // ms
-    var iS = kgImpulseScaled(Z) * cw * 100;                      // bar·ms -> kPa·ms
+    // Sachs scaling for non-standard ambient (lesson 01.5): distance scales with (W/p0)^(1/3),
+    // pressure with p0, time with (W/p0)^(1/3)/a0, impulse with p0^(2/3) W^(1/3)/a0.
+    var sp = Math.cbrt(p0 / P0), sa = A0 / a0;
+    var Z = R / cw * sp;                                         // Sachs-scaled distance, sea-level equivalent
+    var ps = kgOverpressureRatio(Z) * p0;                        // kPa
+    var td = kgDurationScaled(Z) * cw / sp * sa;                 // ms
+    var iS = kgImpulseScaled(Z) * cw * 100 * sp * sp * sa;       // bar·ms -> kPa·ms
     var b = solveDecay(ps, td, iS);
+    // The duration and impulse fits were derived independently; in the far field they can demand a
+    // Friedlander pulse "fuller" than a triangle. Honour the impulse fit: floor b and stretch t_d.
+    if (b < 0.5) { b = 0.5; td = iS / friedlanderImpulse(ps, 1, b); }
     var ta = arrivalTime(R, We, a0, p0);
     var M = machFromOverpressure(ps, p0);
     var q = dynamicPressure(ps, p0);

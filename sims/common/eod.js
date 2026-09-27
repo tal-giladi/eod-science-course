@@ -81,8 +81,9 @@
     var w = canvas.clientWidth || canvas.parentElement.clientWidth || 600;
     h = h || canvas.clientHeight || 260;
     canvas.style.height = h + 'px';
-    canvas.width = Math.round(w * dpr);
-    canvas.height = Math.round(h * dpr);
+    var cw = Math.round(w * dpr), ch = Math.round(h * dpr);
+    if (canvas.width !== cw) canvas.width = cw;       // reallocating a canvas every frame is expensive
+    if (canvas.height !== ch) canvas.height = ch;
     var ctx = canvas.getContext('2d');
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     return { ctx: ctx, w: w, h: h };
