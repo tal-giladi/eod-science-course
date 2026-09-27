@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sim F · Incident Command</title>
+<link rel="stylesheet" href="../common/sim.css">
+<style>
+  .layout { grid-template-columns: 330px 1fr 340px; }
+  .acts button { width: 100%; text-align: left; margin: 2px 0; display: flex; justify-content: space-between; font-size: 12px; }
+  .acts h3 { font-size: 11px; color: var(--muted); letter-spacing: .1em; text-transform: uppercase; margin: 10px 0 4px; }
+  .feed div { padding: 5px 0; border-bottom: 1px dotted #1f2a38; font-size: 13px; line-height: 1.45; }
+  .feed .src { font-family: var(--mono); font-size: 11px; color: var(--cyan); margin-right: 6px; }
+  .feed .warn { color: var(--yellow); }
+  #map { cursor: crosshair; }
+  .belief { display: grid; grid-template-columns: 150px 1fr; gap: 4px 8px; align-items: center; font-size: 12px; }
+  @media (max-width: 1150px) { .layout { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="layout">
+  <div class="panel acts" id="acts">
+    <h2>Actions <span class="hint">(each takes time)</span></h2>
+  </div>
+  <div class="panel">
+    <h2>Incident picture <span class="hint" id="clock"></span></h2>
+    <canvas id="map"></canvas>
+    <div class="row">
+      <label>cordon radius</label><input type="range" id="rad" min="0" max="400" step="10" value="0" style="width:180px"><span class="mono" id="radv">none</span>
+      <button id="applyCordon">set / update cordon</button>
+      <label>control point:</label><span class="hint">shift-click map</span>
+    </div>
+    <h2 style="margin-top:8px">Information feed</h2>
+    <div class="feed log" id="feed" style="max-height:260px"></div>
+  </div>
+  <div class="panel">
+    <h2>Your assessment <span class="hint">(update as evidence arrives)</span></h2>
+    <div class="belief" id="beliefs"></div>
+    <p class="hint">Your probabilities are logged every time you act; they are scored against the evidence-based posterior (not against the hidden truth) — the question is whether you updated sensibly.</p>
+    <h2 style="margin-top:10px">Resources</h2>
+    <div class="kv" id="res"></div>
+    <h2 style="margin-top:10px">Close the incident</h2>
+    <select id="endSel">
+      <option value="">— choose —</option>
+      <option value="standdown">Stand down: assessed as not an explosive hazard</option>
+      <option value="handover">Hazard assessed as credible: hand over to specialist action (outcome decided by specialists)</option>
+      <option value="uxo">Legacy ordnance: hand over for ammunition-technical disposal planning</option>
+      <option value="insufficient">Evidence insufficient: maintain isolation, escalate and continue</option>
+    </select>
+    <div class="row"><button class="primary" id="end">Commit &amp; debrief</button></div>
+  </div>
+</div>
+<script src="../common/eod.js"></script>
+<script>
+(function () {
+  'use strict';
+  var U = EOD.util, level;
+  var diff = EOD.ui.difficultySelect(function (v) { location.href = location.pathname + '?level=' + v; });
+  level = diff.value;
+  EOD.ui.header('F', 'Incident Command', 'information arrives gradually · decide what to learn next · isolate · escalate', [U.el('span', { class: 'hint' }, 'difficulty'), diff]);
+  var seed = EOD.seedFromUrl(), R = EOD.rng(seed);
+
+  // ================================================== hypotheses & ground truth
+  // H: benign (lost property / everyday object), hoax (deliberately placed, not explosive), threat (credible improvised hazard, abstract), legacy (old ordnance)
+  var H = ['benign', 'hoax', 'threat', 'legacy'];
+  var HN = { benign: 'Benign / lost property', hoax: 'Hoax (placed, not explosive)', threat: 'Credible improvised hazard', legacy: 'Legacy ordnance' };
+  var SCEN = [
+    { key: 'station', title: 'Unattended bag at a transport hub', prior: [0.80, 0.08, 0.10, 0.02], people: 900, glass: true, text: 'Station staff report an unattended holdall beside a pillar on the main concourse. Rush hour begins in 40 minutes.' },
+    { key: 'venue', title: 'Parked vehicle near an event venue', prior: [0.83, 0.05, 0.11, 0.01], people: 1500, glass: true, text: 'Stewards report a van parked in a no-parking zone beside the venue entrance two hours before a concert. Nobody has returned to it.' },
+    { key: 'building', title: 'Object found on a construction site', prior: [0.35, 0.02, 0.03, 0.60], people: 120, glass: false, text: 'A digger driver uncovered a rusted cylindrical object about 1 m below ground in an old industrial district. Work has stopped.' },
+    { key: 'post', title: 'Suspicious package in a mailroom', prior: [0.86, 0.07, 0.07, 0.00], people: 300, glass: true, text: 'An office mailroom reports a package with no return address, excessive tape and an odd smell. It is in a ground-floor room.' }
+  ];
+  var sc = R.pick(SCEN);
+  var truthIdx = sample(sc.prior);
+  if (level === 'Expert' && R.bernoulli(0.3)) truthIdx = 2; // expert: threats are more common
+  var truth = H[truthIdx];
+  var secondary = truth === 'threat' && R.bernoulli(level === 'Beginner' ? 0.2 : 0.45); // a second suspicious item near a likely control point
+  var cbrn = sc.key === 'post' && R.bernoulli(0.35);
+  function sample(p) { var u = R.next(), a = 0; for (var i = 0; i < p.length; i++) { a += p[i]; if (u <= a) return i; } return p.length - 1; }
+
+  // hazard radius for scoring (abstract): threat → a public stand-off-like distance; legacy → large for aircraft-bomb-like, else moderate
+  var hazardR = truth === 'threat' ? (sc.key === 'venue' ? R.uniform(250, 400) : R.uniform(80, 140)) : truth === 'legacy' ? R.uniform(100, 300) : 0;
+
+  // ================================================== evidence model: each action yields an observation with likelihoods P(obs | H)
+  // obs likelihood tables: rows = outcomes, columns = hypotheses [benign, hoax, threat, legacy]
+  var ACTIONS = [
+    { id: 'reporter', cat: 'Information', name: 'Interview the person who reported it', t: 5, cost: 0, exposure: 0,
+      out: [['Saw someone leave it hurriedly and walk away', [0.08, 0.5, 0.55, 0.0]], ['Has been there a while; nobody noticed it arrive', [0.6, 0.3, 0.3, 0.2]], ['Found it while working; it looks very old', [0.1, 0.0, 0.02, 0.8]]] },
+    { id: 'cctv', cat: 'Information', name: 'Request CCTV review of the placement', t: 20, cost: 1, exposure: 0, avail: function () { return sc.key !== 'building'; },
+      out: [['Footage shows a traveller forgetting it and leaving', [0.55, 0.02, 0.02, 0.0]], ['Footage shows deliberate placement, person leaves quickly', [0.05, 0.75, 0.7, 0.0]], ['Placement not captured (camera angle)', [0.4, 0.23, 0.28, 1.0]]] },
+    { id: 'owner', cat: 'Information', name: 'Search for an owner (announcements, lost property, vehicle check)', t: 15, cost: 1, exposure: 0, avail: function () { return sc.key !== 'building'; },
+      out: [['Owner located and explains the item', [0.7, 0.0, 0.0, 0.0]], ['No owner found', [0.3, 1.0, 1.0, 1.0]]] },
+    { id: 'threats', cat: 'Information', name: 'Check for threats or warnings received', t: 10, cost: 0, exposure: 0,
+      out: [['A warning call was received naming this location', [0.01, 0.6, 0.35, 0.0]], ['No warnings received', [0.99, 0.4, 0.65, 1.0]]] },
+    { id: 'history', cat: 'Information', name: 'Check site history (wartime records, previous finds)', t: 15, cost: 0, exposure: 0,
+      out: [['Area was heavily affected in past conflict; earlier finds recorded', [0.3, 0.1, 0.1, 0.85]], ['No relevant history', [0.7, 0.9, 0.9, 0.15]]] },
+    { id: 'robotvis', cat: 'Remote assessment', name: 'Deploy robot: remote visual inspection', t: 20, cost: 2, exposure: 0,
+      out: [['Everyday contents visible through an opening', [0.55, 0.1, 0.03, 0.0]], ['Unusual features visible (attachments/modifications)', [0.03, 0.45, 0.6, 0.05]], ['Corroded metal body consistent with old munition', [0.05, 0.0, 0.0, 0.85]], ['Nothing conclusive visible', [0.37, 0.45, 0.37, 0.1]]] },
+    { id: 'xray', cat: 'Remote assessment', name: 'Robot-deployed internal imaging (abstract)', t: 30, cost: 3, exposure: 0, needs: 'robotvis',
+      out: [['Image shows ordinary items only', [0.85, 0.35, 0.04, 0.0]], ['Image shows components inconsistent with ordinary contents', [0.03, 0.55, 0.9, 0.2]], ['Dense metal body, internal structure consistent with ordnance', [0.02, 0.0, 0.01, 0.8]], ['Image inconclusive', [0.1, 0.1, 0.05, 0.0]]] },
+    { id: 'trace', cat: 'Remote assessment', name: 'Robot trace sampling of the exterior', t: 15, cost: 2, exposure: 0, needs: 'robotvis',
+      out: [['Trace alarm (energetic signature)', [0.03, 0.08, 0.6, 0.5]], ['No alarm', [0.97, 0.92, 0.4, 0.5]]] },
+    { id: 'canine', cat: 'Remote assessment', name: 'Explosive-detection dog team (from stand-off, handler decides)', t: 25, cost: 2, exposure: 1, avail: function () { return sc.key !== 'building'; },
+      out: [['Dog indicates', [0.05, 0.1, 0.8, 0.6]], ['No indication', [0.95, 0.9, 0.2, 0.4]]] },
+    { id: 'manual', cat: 'Remote assessment', name: 'Send a person to look closely (manual approach)', t: 10, cost: 0, exposure: 5,
+      out: [['Looks like ordinary luggage/contents', [0.6, 0.3, 0.25, 0.0]], ['Something looks wrong', [0.1, 0.5, 0.55, 0.9]], ['Cannot tell', [0.3, 0.2, 0.2, 0.1]]] },
+    { id: 'sweep', cat: 'Scene safety', name: 'Search the control point & approach routes for secondary items', t: 15, cost: 1, exposure: 0, special: true },
+    { id: 'evac', cat: 'Scene safety', name: 'Evacuate everyone inside the cordon', t: 15, cost: 2, exposure: 0, special: true },
+    { id: 'shelter', cat: 'Scene safety', name: 'Shelter-in-place for glazed buildings near the cordon (move away from windows)', t: 5, cost: 1, exposure: 0, special: true },
+    { id: 'cbrnteam', cat: 'Escalation', name: 'Request CBRN specialist assessment', t: 30, cost: 3, exposure: 0, special: true },
+    { id: 'ato', cat: 'Escalation', name: 'Request ammunition-technical specialist', t: 30, cost: 2, exposure: 0, special: true },
+    { id: 'medical', cat: 'Escalation', name: 'Pre-alert ambulance & hospitals', t: 5, cost: 1, exposure: 0, special: true },
+    { id: 'wait', cat: 'Other', name: 'Hold and observe (no new action)', t: 10, cost: 0, exposure: 0, special: true }
+  ];
+  var ACT = {}; ACTIONS.forEach(function (a) { ACT[a.id] = a; });
+
+  // ================================================== state
+  var clock = 0, spent = 0, budget = { Beginner: 16, Intermediate: 13, Advanced: 11, Expert: 9 }[level], timeLimit = { Beginner: 240, Intermediate: 180, Advanced: 150, Expert: 120 }[level];
+  var done = {}, obsLog = [], cordon = 0, cordonSetAt = null, evacuated = false, sheltered = false, swept = false, cp = null, exposure = 0, escalated = {};
+  var post = sc.prior.slice(); // true evidence-based posterior (hidden at Advanced+)
+  var user = sc.prior.slice(), userLog = [], peopleExposure = 0, secondaryFound = false, cbrnFlag = false;
+
+  // ================================================== map
+  var cv = U.$('#map'), MW = 900, MH = 520, scale = 1; // metres
+  var item = { x: 450, y: 260 };
+  var buildings = [[120, 60, 180, 120], [360, 40, 200, 120], [620, 70, 160, 140], [110, 330, 220, 130], [600, 330, 190, 130], [380, 350, 130, 110]];
+  var cpCandidates = [[250, 260], [650, 260], [450, 470]];
+  if (secondary) item.secondary = R.pick(cpCandidates);
+  function drawMap() {
+    var g = EOD.hidpi(cv, Math.round((cv.clientWidth || 600) * MH / MW)), c = g.ctx, s = g.w / MW;
+    c.fillStyle = '#0c1118'; c.fillRect(0, 0, g.w, g.h);
+    c.strokeStyle = '#141d29'; for (var x = 0; x < MW; x += 50) { c.beginPath(); c.moveTo(x * s, 0); c.lineTo(x * s, g.h); c.stroke(); } for (var y = 0; y < MH; y += 50) { c.beginPath(); c.moveTo(0, y * s); c.lineTo(g.w, y * s); c.stroke(); }
+    buildings.forEach(function (b) { c.fillStyle = sc.glass ? '#26384d' : '#33302b'; c.fillRect(b[0] * s, b[1] * s, b[2] * s, b[3] * s); if (sc.glass) { c.strokeStyle = '#5b87b3'; c.strokeRect(b[0] * s + 1, b[1] * s + 1, b[2] * s - 2, b[3] * s - 2); } });
+    if (cordon > 0) { c.fillStyle = 'rgba(248,113,113,.08)'; c.strokeStyle = '#f87171'; c.setLineDash([8, 5]); c.beginPath(); c.arc(item.x * s, item.y * s, cordon * s, 0, 7); c.fill(); c.stroke(); c.setLineDash([]); }
+    var rr = +U.$('#rad').value; if (rr && rr !== cordon) { c.strokeStyle = 'rgba(250,204,21,.6)'; c.beginPath(); c.arc(item.x * s, item.y * s, rr * s, 0, 7); c.stroke(); }
+    c.fillStyle = '#fb923c'; c.beginPath(); c.arc(item.x * s, item.y * s, 6, 0, 7); c.fill();
+    c.fillStyle = '#e6edf3'; c.font = '11px monospace'; c.fillText('reported item', item.x * s + 8, item.y * s - 6);
+    cpCandidates.forEach(function (p) { c.strokeStyle = '#334155'; c.strokeRect(p[0] * s - 6, p[1] * s - 6, 12, 12); });
+    if (cp) { c.fillStyle = '#22d3ee'; c.fillRect(cp[0] * s - 6, cp[1] * s - 6, 12, 12); c.fillText('control point', cp[0] * s + 9, cp[1] * s + 4); }
+    if (secondaryFound && item.secondary) { c.fillStyle = '#facc15'; c.beginPath(); c.arc(item.secondary[0] * s, item.secondary[1] * s, 5, 0, 7); c.fill(); c.fillText('2nd item', item.secondary[0] * s + 7, item.secondary[1] * s); }
+    c.fillStyle = '#7d8ba0'; c.fillText('100 m', 20 * s, (MH - 12) * s); c.fillRect(20 * s, (MH - 8) * s, 100 * s, 2);
+    c.fillText(sc.glass ? 'glazed buildings' : 'low-rise masonry', g.w - 130, 14);
+  }
+  cv.addEventListener('click', function (e) {
+    if (!e.shiftKey) return; var r = cv.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * MW, y = (e.clientY - r.top) / r.height * MH;
+    cp = [x, y]; feed('You', 'Control point set ' + Math.round(Math.hypot(x - item.x, y - item.y)) + ' m from the item.'); drawMap();
+  });
+  U.$('#rad').oninput = function () { U.$('#radv').textContent = this.value + ' m'; drawMap(); };
+  U.$('#applyCordon').onclick = function () {
+    var r = +U.$('#rad').value; cordon = r; cordonSetAt = cordonSetAt === null ? clock : cordonSetAt; evacuated = false;
+    feed('You', 'Cordon set at ' + r + ' m. (Isolation takes effect as people are moved — evacuate to complete it.)'); advance(5); drawMap();
+  };
+
+  // ================================================== actions UI
+  var cats = {};
+  ACTIONS.forEach(function (a) { (cats[a.cat] = cats[a.cat] || []).push(a); });
+  Object.keys(cats).forEach(function (k) {
+    U.$('#acts').appendChild(U.el('h3', null, k));
+    cats[k].forEach(function (a) {
+      if (a.avail && !a.avail()) return;
+      var b = U.el('button', { 'data-id': a.id }, '<span>' + a.name + '</span><span class="mono">' + a.t + 'm' + (a.cost ? ' · ' + a.cost + 'r' : '') + '</span>');
+      b.onclick = function () { act(a); }; U.$('#acts').appendChild(b);
+    });
+  });
+  // belief sliders
+  H.forEach(function (h, i) {
+    var row = U.el('label', null, HN[h]), inp = U.el('input', { type: 'range', min: 0, max: 1, step: 0.01, value: user[i], 'data-i': i });
+    inp.oninput = function () { user[i] = +this.value; normUser(); };
+    U.$('#beliefs').appendChild(row); U.$('#beliefs').appendChild(inp);
+  });
+  function normUser() { var z = user.reduce(function (a, b) { return a + b; }, 0) || 1; document.querySelectorAll('#beliefs input').forEach(function (inp, i) { inp.title = (user[i] / z).toFixed(2); }); }
+
+  function feed(src, msg, cls) { var d = U.el('div', cls ? { class: cls } : null, '<span class="src">T+' + clock + 'm ' + src + '</span>' + msg); var f = U.$('#feed'); f.insertBefore(d, f.firstChild); }
+  function advance(mins) {
+    var before = clock; clock += mins;
+    // people exposure: if a real hazard exists, people inside hazard radius and not yet isolated accumulate exposure
+    if (hazardR > 0) {
+      var protectedFrac = evacuated ? Math.min(1, cordon / hazardR) : (cordon > 0 ? 0.3 * Math.min(1, cordon / hazardR) : 0);
+      if (sheltered && sc.glass) protectedFrac = Math.min(1, protectedFrac + 0.15);
+      peopleExposure += (1 - protectedFrac) * sc.people * mins / 60;
+    }
+    // developing events
+    if (cbrn && !cbrnFlag && clock >= 20) { cbrnFlag = true; feed('Mailroom staff', 'Two people who handled the package report stinging eyes and a strange powder on their hands.', 'warn'); }
+    if (clock >= 40 && before < 40 && sc.key === 'station') feed('Transport control', 'Rush hour starting — crowds building at the entrances; pressure to reopen.', 'warn');
+    if (clock >= 60 && before < 60 && sc.key === 'venue') feed('Venue manager', 'Doors due to open in 60 minutes. Requests an estimate for reopening.', 'warn');
+    U.$('#clock').textContent = '· T+' + clock + ' min · limit ' + timeLimit;
+    render();
+    if (clock >= timeLimit) { feed('Command', 'Time limit reached — you must close the incident now.', 'warn'); }
+  }
+  function act(a) {
+    if (a.needs && !done[a.needs]) { feed('Command', 'That requires the robot to be deployed first.'); return; }
+    if (spent + a.cost > budget) { feed('Command', 'Insufficient resources for that action.'); return; }
+    if (done[a.id] && !a.special && a.id !== 'wait') { feed('Command', 'Already done — repeating it will not give independent information.'); return; }
+    spent += a.cost; done[a.id] = (done[a.id] || 0) + 1; exposure += a.exposure;
+    userLog.push({ t: clock, user: user.slice(), post: post.slice() });
+    if (a.id === 'manual') feed('Command', 'A responder approached the item. That exposure is not recoverable if the item functions.', 'warn');
+    if (a.out) {
+      var col = truthIdx, u = R.next(), acc = 0, k = 0, probs = a.out.map(function (o) { return o[1][col]; }), z = probs.reduce(function (x, y) { return x + y; }, 0);
+      for (k = 0; k < probs.length; k++) { acc += probs[k] / z; if (u <= acc) break; }
+      k = Math.min(k, probs.length - 1);
+      var lik = a.out[k][1]; post = post.map(function (p, i) { return p * lik[i]; }); var zz = post.reduce(function (x, y) { return x + y; }, 0); post = post.map(function (p) { return p / zz; });
+      obsLog.push({ t: clock, a: a.id, o: a.out[k][0], lik: lik });
+      feed(a.name.split(':')[0].split('(')[0].trim(), a.out[k][0]);
+    }
+    if (a.id === 'sweep') { swept = true; if (item.secondary && cp && Math.hypot(cp[0] - item.secondary[0], cp[1] - item.secondary[1]) < 60) { secondaryFound = true; feed('Search team', 'A second unattended item found near your control point. Control point must move.', 'warn'); }
+      else feed('Search team', cp ? 'Control point and approach routes searched — nothing found.' : 'Searched approach routes (no control point set yet).'); }
+    if (a.id === 'evac') { if (!cordon) feed('Command', 'Set a cordon radius first.'); else { evacuated = true; feed('Police', 'Evacuation inside ' + cordon + ' m completed.'); } }
+    if (a.id === 'shelter') { sheltered = true; feed('Police', 'Occupants of nearby glazed buildings moved to interior rooms away from windows.'); }
+    if (a.id === 'cbrnteam') { escalated.cbrn = true; feed('CBRN team', cbrn ? 'Assessment: possible chemical/biological agent — area to be managed as CBRN incident.' : 'No CBRN indicators found.', cbrn ? 'warn' : ''); }
+    if (a.id === 'ato') { escalated.ato = true; feed('Ammunition technician', truth === 'legacy' ? 'Assessment: consistent with legacy ordnance; recommends isolation distance appropriate to a large item until identified.' : 'Not consistent with conventional ordnance.'); }
+    if (a.id === 'medical') { escalated.medical = true; feed('Ambulance service', 'Pre-alerted; a standby point is requested outside the cordon.'); }
+    advance(a.t);
+  }
+
+  function render() {
+    drawMap();
+    var show = level === 'Beginner';
+    U.$('#res').innerHTML = [['time', clock + ' / ' + timeLimit + ' min'], ['resources', spent + ' / ' + budget], ['cordon', cordon ? cordon + ' m' + (evacuated ? ' (evacuated)' : ' (not yet evacuated)') : 'none'],
+      ['control point', cp ? Math.round(Math.hypot(cp[0] - item.x, cp[1] - item.y)) + ' m' + (swept ? ' (searched)' : ' (not searched)') : 'none'], ['responder exposure', exposure]]
+      .concat(show ? [['evidence posterior', H.map(function (h, i) { return h + ' ' + post[i].toFixed(2); }).join(' · ')]] : [])
+      .map(function (r) { return '<span class="k">' + r[0] + '</span><span>' + r[1] + '</span>'; }).join('');
+    document.querySelectorAll('#acts button').forEach(function (b) { var a = ACT[b.dataset.id]; b.disabled = spent + a.cost > budget || clock >= timeLimit || (a.needs && !done[a.needs]); });
+  }
+
+  feed('Call', sc.text);
+  feed('Command', 'You are the incident commander. Everything you learn costs time. Set your beliefs (right) and act.');
+  U.$('#clock').textContent = '· T+0 min · limit ' + timeLimit;
+  render();
+
+  // ================================================== debrief
+  U.$('#end').onclick = function () {
+    var choice = U.$('#endSel').value; if (!choice) { alert('Choose how you close the incident.'); return; }
+    userLog.push({ t: clock, user: user.slice(), post: post.slice() });
+    var zU = user.reduce(function (a, b) { return a + b; }, 0) || 1, un = user.map(function (x) { return x / zU; });
+    // correct closing decision relative to the EVIDENCE (not to hidden truth)
+    var pBad = post[2] + (cbrn ? 0 : 0), maxH = H[post.indexOf(Math.max.apply(null, post))];
+    var ideal = post[2] > 0.15 || cbrn ? (post[2] > 0.5 || cbrn ? 'handover' : 'insufficient') : post[3] > 0.5 ? 'uxo' : post[0] + post[1] > 0.9 ? 'standdown' : 'insufficient';
+    var decisionOk = choice === ideal || (ideal === 'insufficient' && choice === 'handover' && post[2] > 0.3);
+    // scores
+    var safety = 100;
+    if (hazardR > 0) { safety -= Math.min(60, peopleExposure / sc.people * 35); if (cordon < hazardR * 0.8) safety -= 20; if (!evacuated) safety -= 15; }
+    safety -= exposure * 6; if (secondary && !swept) safety -= 20; if (secondaryFound) safety -= 5; if (cbrn && !escalated.cbrn) safety -= 25;
+    if (choice === 'standdown' && truth !== 'benign' && truth !== 'hoax') safety -= 40;
+    // information quality: fraction of high-value, low-exposure information actions taken (by expected entropy reduction under the prior)
+    var infoIds = ACTIONS.filter(function (a) { return a.out && (!a.avail || a.avail()); }).map(function (a) { return a.id; });
+    var voi = {}; infoIds.forEach(function (id) { voi[id] = eig(ACT[id], sc.prior); });
+    var ranked = infoIds.slice().sort(function (a, b) { return voi[b] / (ACT[b].t + 5 * ACT[b].exposure) - voi[a] / (ACT[a].t + 5 * ACT[a].exposure); });
+    var top = ranked.slice(0, 4), gotTop = top.filter(function (id) { return done[id]; }).length;
+    var info = 100 * gotTop / top.length;
+    var H0 = ent(sc.prior), H1 = ent(post), unc = 100 * U.clamp((H0 - H1) / H0, 0, 1);
+    var resources = 100 * U.clamp(1 - spent / budget * 0.5 - clock / timeLimit * 0.3, 0, 1);
+    var recog = decisionOk ? 100 : 30; var brier = un.reduce(function (a, p, i) { return a + Math.pow(p - post[i], 2); }, 0);
+    recog = 0.6 * recog + 40 * (1 - Math.min(1, brier));
+    var expo = U.clamp(100 - exposure * 20, 0, 100);
+    var lines = obsLog.map(function (o) { return 'T+' + o.t + ' ' + ACT[o.a].name + ' → "' + o.o + '"'; });
+    EOD.debrief.show({ title: 'Incident command — ' + sc.title, seed: seed, level: level,
+      scores: [{ label: 'Safety', value: U.clamp(safety, 0, 100) }, { label: 'Information quality', value: info, note: gotTop + ' of the 4 highest-value/lowest-exposure sources used' },
+        { label: 'Uncertainty reduction', value: unc, note: 'entropy ' + H0.toFixed(2) + ' → ' + H1.toFixed(2) + ' bits' }, { label: 'Resource use', value: resources },
+        { label: 'Recognition of unknowns', value: recog, note: 'your final beliefs vs evidence: Brier ' + brier.toFixed(2) }, { label: 'Avoiding exposure', value: expo }],
+      observed: lines.length ? lines : ['You gathered no information.'],
+      decided: ['Cordon ' + (cordon ? cordon + ' m' : 'none') + (evacuated ? ', evacuated' : ', not evacuated') + (sheltered ? ', shelter-in-place for glazed buildings' : '') + '.', 'Control point: ' + (cp ? Math.round(Math.hypot(cp[0] - item.x, cp[1] - item.y)) + ' m from the item, ' + (swept ? 'searched' : 'NOT searched') : 'none') + '.',
+        'Escalations: ' + (Object.keys(escalated).join(', ') || 'none') + '.', 'Closed as: ' + U.$('#endSel').selectedOptions[0].text + '.', 'Your final beliefs: ' + H.map(function (h, i) { return h + ' ' + un[i].toFixed(2); }).join(' · ')],
+      missed: [].concat(
+        top.filter(function (id) { return !done[id]; }).map(function (id) { return 'High-value information not gathered: ' + ACT[id].name + ' (expected info gain ' + voi[id].toFixed(2) + ' bits).'; }),
+        secondary && !swept ? ['There was a second suspicious item near a likely control point — you never searched it. Secondary hazards target responders.'] : [],
+        cbrn && !escalated.cbrn ? ['CBRN indicators (symptoms, powder) required CBRN escalation.'] : [],
+        exposure ? ['A manual approach exposed a responder when remote means were available.'] : [],
+        hazardR && cordon < hazardR * 0.8 ? ['Your cordon (' + cordon + ' m) was inside the hazard distance for this item (~' + Math.round(hazardR) + ' m).'] : [],
+        decisionOk ? [] : ['On the evidence you had, the defensible closure was: ' + { standdown: 'stand down', handover: 'hand over to specialists', uxo: 'legacy-ordnance hand-over', insufficient: 'maintain isolation and escalate' }[ideal] + '.']),
+      uncertainty: ['Hidden truth: ' + HN[truth] + (cbrn ? ' with a CBRN component' : '') + (secondary ? ' and a secondary item' : '') + '.', 'Evidence-based posterior at closure: ' + H.map(function (h, i) { return h + ' ' + post[i].toFixed(2); }).join(' · ') + '.',
+        'Every source had false positives and false negatives (a dog, trace alarm or witness can be wrong); the likelihood tables are in lesson 07.1.'],
+      reasoning: ['Start with cheap, zero-exposure, high-value information (reporter, owner, CCTV, warnings) while isolation is being established — isolation first, then information.',
+        'Use remote means before people; each approach by a person is exposure that cannot be undone.', 'Search the control point and approach routes: responders are predictable, so secondary hazards are placed where they gather.',
+        'Glass is the dominant urban injury mechanism: in glazed areas, shelter-in-place away from windows can protect more people than evacuation through the hazard zone.',
+        '"Evidence insufficient" is a legitimate, professional closure when the posterior does not justify stand-down.'],
+      physics: ['Cordon distances derive from blast and fragment hazard physics (Stage 4) applied to an uncertain yield (07.2).'],
+      engineering: ['Value of information: act where expected entropy reduction per minute (and per unit of exposure) is highest.'],
+      links: [{ href: EOD.COURSE + 'lessons/stage-07/lesson-01', text: '07.1 Decisions under uncertainty' }, { href: EOD.COURSE + 'lessons/stage-07/lesson-02', text: '07.2 Incident management' },
+        { href: EOD.COURSE + 'lessons/stage-04/lesson-04', text: '04.4 Injury & secondary hazards' }, { href: EOD.COURSE + 'lessons/stage-03/lesson-04', text: '03.4 Improvised hazards' }]
+    });
+  };
+  function ent(p) { return -p.reduce(function (a, x) { return a + (x > 0 ? x * Math.log2(x) : 0); }, 0); }
+  function eig(a, prior) {
+    var h0 = ent(prior), exp = 0;
+    a.out.forEach(function (o) { var po = prior.reduce(function (s, p, i) { return s + p * o[1][i]; }, 0); if (po <= 0) return; var postO = prior.map(function (p, i) { return p * o[1][i] / po; }); exp += po * ent(postO); });
+    return h0 - exp;
+  }
+  window.addEventListener('resize', drawMap);
+})();
+</script>
+</body>
+</html>

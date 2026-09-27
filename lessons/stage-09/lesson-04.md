@@ -181,7 +181,7 @@ $$
 0&0&0 & -x_i & -y_i & -1 & v_i x_i & v_i y_i & v_i
 \end{pmatrix}\mathbf{h}=\mathbf{0}
 \quad\Rightarrow\quad
-\hat{\mathbf{h}}=\arg\min_{\|\mathbf{h}\|=1}\|\mathbf{A}\mathbf{h}\|_2 .
+\hat{\mathbf{h}}=\arg\min_{\Vert \mathbf{h}\Vert =1}\Vert \mathbf{A}\mathbf{h}\Vert _2 .
 $$
 
 The minimiser is the right singular vector of $\mathbf{A}$ ($2N\times9$) with the smallest singular
@@ -198,7 +198,7 @@ numerically poor.
 | $\mathbf{A}$ | stacked constraint matrix | mixed |
 | $\mathbf{h}$ | 9-vector of homography entries (unit norm) | — |
 | $\sigma_9$ | smallest singular value; ≈ 0 for noise-free data | — |
-| reprojection error $e_i = \|\pi(\mathbf{H}\mathbf{x}_i)-\mathbf{x}'_i\|$ | geometric residual | px |
+| reprojection error $e_i = \Vert \pi(\mathbf{H}\mathbf{x}_i)-\mathbf{x}'_i\Vert $ | geometric residual | px |
 
 **Intuition.** The DLT minimises an *algebraic* error, which is fast and linear but not the
 statistically right thing; a few Gauss–Newton or Levenberg–Marquardt steps on the geometric

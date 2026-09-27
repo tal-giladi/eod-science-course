@@ -66,7 +66,7 @@ $r_{\text{circ}} = \tfrac12\sqrt{0.7^2+1.1^2} = 0.652$ m. A 0.9 m doorway appear
 inflating by $r_{\text{in}}$ (needs > 0.70 m) but impassable when inflating by
 $r_{\text{circ}}$ (needs > 1.30 m) — a conservative planner would declare the building
 inaccessible. Maximum heading misalignment for the rectangle to pass: $0.7\cos\psi + 1.1\sin\psi
-\le 0.9$ with the wall thickness ignored gives $\psi \le 10.9°$.
+\le 0.9$ with the wall thickness ignored gives $\psi \le 11.2°$.
 
 ```python
 import numpy as np
@@ -74,7 +74,7 @@ from scipy.optimize import brentq
 w, l, door = 0.7, 1.1, 0.9
 print(0.5 * np.hypot(w, l))
 psi = brentq(lambda p: w * np.cos(p) + l * np.sin(p) - door, 0, np.pi / 4)
-print(np.degrees(psi))   # 10.9 deg
+print(np.degrees(psi))   # 11.2 deg
 ```
 
 <details class="answer"><summary>Exercise 1 — then reveal</summary>
@@ -373,7 +373,7 @@ def boustrophedon(x0, y0, length, width, spacing):
     return np.array(wps)
 
 wps = boustrophedon(0, 0, 40, 25, 0.8)
-print(len(wps) // 2, np.sum(np.hypot(*np.diff(wps, axis=0).T)))   # 32 lanes, ~1304.8 m
+print(len(wps) // 2, np.sum(np.hypot(*np.diff(wps, axis=0).T)))   # 32 lanes, 1304.6 m (last lane clipped to the boundary)
 ```
 
 <details class="answer"><summary>Exercise 6 — then reveal</summary>
@@ -502,8 +502,10 @@ comes from a quick SLAM pass (06.7).
    map (06.9).
 3. **Uncertainty.** Pose σ grows to 0.4 m on the open asphalt (few features): chance constraint
    with $\Delta = 10^{-3}$ adds $3.09\times0.4 = 1.24$ m to the lethal radius → 7.24 m.
-4. **Search.** A\* with octile heuristic: path 71 m (vs 60 m direct), closest approach to the
-   second item 9.1 m, stays in coverage.
+4. **Search.** A\* with octile heuristic returns a route somewhat longer than the 60 m direct
+   line. What must be *reported* with it: length, closest approach to the second item (≥ 7.24 m
+   by construction, more where the risk layer pushes it out), time outside radio coverage, and
+   the chance-constraint budget used.
 5. **Replan.** A vehicle door found open blocks a lane; D\* Lite repairs the path locally.
 6. **Final approach.** The last 2 m are planned for the arm/camera mast with RRT\* in joint
    space, then shown to the operator as a predictive ghost (06.5) for approval before execution.
@@ -617,7 +619,7 @@ planning"; Choset (2000) on coverage. Full bibliographic entries:
    if $h(n')\le h^\ast(n')$ then $h(n)\le c(n,n') + h(n') \le c(n,n') + h^\ast(n') = h^\ast(n)$.
 2. $\zeta_3 = 4\pi/3 = 4.189$; $\gamma^\ast = 2(4/3)^{1/3}(50/4.189)^{1/3} = 2\cdot1.1006\cdot2.2855 =
    5.031$; $(\ln2000/2000)^{1/3} = (0.0038)^{1/3} = 0.1561$; $r = 0.785$ m.
-3. (4) Present all three as a Pareto table/plot: the marginal cost of standoff is 0.83 m of
+4. Present all three as a Pareto table/plot: the marginal cost of standoff is 0.83 m of
    travel per metre of standoff from $w=0$ to 2, then 1.1 m/m from 2 to 5 — diminishing returns.
    Let the team choose; record the choice.
 

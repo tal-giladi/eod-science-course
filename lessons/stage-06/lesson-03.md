@@ -13,9 +13,9 @@
 
 ## Why this matters
 
-The manipulator is the part of an EOD robot that replaces the technician's hands. Its tasks are
-positioning cameras and sensors close to an item, opening doors and bags, moving obstacles, and
-lifting and placing objects. In this course these appear only as *manipulation tasks on fictional
+The manipulator is the part of an EOD robot that replaces the technician's hands. Its generic tasks are
+positioning cameras and sensors close to an item, opening doors, moving obstacles, and lifting and
+placing objects. In this course these appear only as *manipulation tasks on fictional
 objects*, like the dexterity boards of the NIST test methods. The arm's usefulness depends on
 several things. First is *where* it can put the gripper (its workspace). Then *how well*: its
 precision and dexterity at that point. Then *how much* it can hold there: payload at reach. Finally
@@ -492,9 +492,12 @@ Show that for the 2R arm $w$ is maximised at $q_2=\pm90°$ regardless of $\ell_1
 *isotropic* configuration ($\kappa=1$) exists only if $\ell_2/\ell_1$ satisfies a condition. Find
 it.
 
-*Answer.* $w=\ell_1\ell_2|\sin q_2|$ is maximal at 90°. Isotropy requires $JJ^\top \propto I$.
-Working in the frame of link 1, the columns are $(0,\ \ell_1) + \ell_2(\cos q_2\ldots)$. The known
-result (Salisbury & Craig) is $\ell_2/\ell_1 = 1/\sqrt2$ with $q_2 = 135°$. Check numerically: for
+*Answer.* $w=\ell_1\ell_2|\sin q_2|$ is maximal at 90°. Isotropy requires $JJ^\top \propto I$,
+i.e. the two columns of $J$ are orthogonal and of equal length. In link-1 coordinates, column 2 is
+the vector $\ell_2(-\sin q_2, \cos q_2)$ and column 1 is that plus $(0,\ell_1)$. Equal length gives
+$\ell_1^2 + 2\ell_1\ell_2\cos q_2 = 0$, and orthogonality gives $\ell_2 + \ell_1\cos q_2 = 0$.
+Together: $\cos q_2 = -\ell_2/\ell_1$ and $\ell_1 = 2\ell_2\cdot\ell_2/\ell_1$, so
+$\ell_2/\ell_1 = 1/\sqrt2$ and $q_2 = 135°$ (Salisbury & Craig). Check numerically: for
 $\ell=(1, 0.7071)$ and $q_2=135°$, $\sigma_1=\sigma_2=0.7071$. This is a classic design criterion
 for fingers and small wrists.
 

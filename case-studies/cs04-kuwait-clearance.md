@@ -110,8 +110,9 @@ to a specified depth*, verified by **independent quality assurance** (Landmine M
 The reported outcome: all 728 km² received initial clearance, but **many minefields failed
 quality-assurance inspection**. Uncleared mines were found, and large areas had to be
 resurveyed and re-cleared (Landmine Monitor, 1999). The decision was between accepting residual
-risk (marking and restricting land) and paying twice for the same area. Kuwait paid for
-re-clearance in significant areas and still declared residual contamination years later.
+risk (marking and restricting land) and paying twice for the same area. Many minefields had to
+be re-cleared (Landmine Monitor, 1999), and residual contamination was still being reported
+decades later.
 
 ## Technology used
 

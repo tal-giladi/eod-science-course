@@ -80,7 +80,7 @@ pane G for 100 YU (surface burst). Hint: face-on at weak shocks, $p_r\approx 2p_
 the full SDOF result of 340 m and explain the difference.
 
 *Answer.* Need $p_r = 2.5$ kPa ⇒ $p_s \approx 1.24$ kPa ⇒ from the far-field form $p_s\approx0.827p_0/Z$
-(04.1), $Z\approx 67.6$ ⇒ $R = 67.6\times180^{1/3} = 382$ m. Slightly larger than 340 m because the
+(04.1), $Z\approx 67.6$ (the full fit gives 67.9) ⇒ $R = 67.6\times180^{1/3} = 382$ m. Slightly larger than 340 m because the
 pulse is long but not infinitely long — the finite-duration response is a bit less than the
 quasi-static bound. The asymptote is conservative, as it should be.
 
@@ -395,7 +395,7 @@ def kg_ps(Z, p0=101.325):
 K = np.array([3.0, 12.0, 18.0])
 print(qd_distance(1000, K), kg_ps(K / 1.8 ** (1 / 3)))   # [30 120 180], [128 10.2 6.2]
 ft_lb = 0.3048 / 0.45359237 ** (1 / 3)
-print(40 * ft_lb, kg_ps(40 * ft_lb / 1.8 ** (1 / 3)))     # 15.87 m/kg^1/3, ≈ 7.2 kPa
+print(40 * ft_lb, kg_ps(40 * ft_lb / 1.8 ** (1 / 3)))     # 15.87 m/kg^1/3, ≈ 7.15 kPa
 ```
 
 <details class="answer"><summary>Exercise 5 — then reveal</summary>
@@ -437,14 +437,14 @@ burst, so $W_{\text{eff}}=54$ YU) hazard 25 m from the façade. Elements: (a) an
 pane G; (b) a masonry-like infill wall, Sim D's $T = 20$ ms element with $x_c = 3$ cm; (c) a
 reinforced column.
 
-1. **Load.** $Z = 25/54^{1/3} = 6.61$ ⇒ $p_s\approx18$ kPa; face-on $p_r\approx 2.1\,p_s\approx 38$ kPa;
-   scaled $t_d$ and $i_s$ from the fits (04.1) give $t_d$ of order 9–10 ms and a reflected impulse
-   of order 150–200 kPa·ms (compute exactly in the exercise below).
+1. **Load.** $Z = 25/54^{1/3} = 6.61$ ⇒ $p_s = 18.1$ kPa; face-on $p_r = 2.15\,p_s = 39.0$ kPa;
+   the impulse fit gives $i_s = 112$ kPa·ms, and with Sim D's convention ($b = 0.5$, stretched
+   $t_d = 14.4$ ms) the reflected impulse is ≈ 240 kPa·ms.
 2. **Glazing.** $P^\*=2.5$ kPa, $I^\* = 8$ kPa·ms: the load is an order of magnitude beyond both
-   asymptotes ⇒ the panes fail; fragments are propelled into occupied rooms. Glazing is the
+   asymptotes (the SDOF peak deflection is ≈ 12 $x_c$) ⇒ the panes fail; fragments are propelled into occupied rooms. Glazing is the
    governing hazard for occupants.
 3. **Infill wall.** $x_c=3$ cm: $P^\*=148$ kPa, $I^\*=942$ kPa·ms. The load is well inside the
-   safe region ⇒ no significant wall damage expected at this criterion.
+   safe region (SDOF peak ≈ 0.17 $x_c$) ⇒ no significant wall damage expected at this criterion.
 4. **Column.** Reflected pressure on a narrow column clears quickly (04.2), and its capacity is far
    higher; not governing at this range — but at close range (single-digit metres) direct column
    loss becomes credible, which is the progressive-collapse trigger of §5.
@@ -486,7 +486,7 @@ crossing ranges 4× larger ($512/8 = 64$, $64^{1/3}=4$)? Explain any deviation w
 <details class="answer"><summary>Answer to 2</summary>
 
 $P^\* = 20(1-1/(2\mu))$: 10, 15, 18, 19 kPa. $I^\*=\sqrt{2\cdot100\cdot20000\cdot0.005(\mu-0.5)}=\sqrt{20000(\mu-0.5)}$:
-100, 173, 332, 436 kPa·ms. Impulse capacity grows ~4.4× from μ=1 to 10; pressure capacity only
+100, 173, 300, 436 kPa·ms. Impulse capacity grows ~4.4× from μ=1 to 10; pressure capacity only
 1.9×. Near-field loads are short (impulsive), so ductile retrofits help most there; far-field
 long-duration loads need strength (or the far-field element, glass, needs retention).
 
@@ -551,13 +551,12 @@ Builds on [Project P01](projects/p01-blast-wave/README.md).
 
 <details class="answer"><summary>Answers to 4 and 5</summary>
 
-4. $W_\text{eff} = 18$. Quasi-static: $p_r = 2.5$ kPa ⇒ $p_s\approx1.24$ ⇒ $Z\approx67.6$ ⇒ $R\approx 177$ m.
-   Impulsive: need reflected $i \approx 2 i_s = 7.96$ ⇒ $i_s \approx 4.0$ kPa·ms; far-field
-   $i_s/W^{1/3}\approx$ scaled fit ⇒ at $W^{1/3}=2.62$, $i_s/W^{1/3} = 1.52$ ⇒ $Z\approx 125$ (fit)
-   ⇒ $R\approx 330$ m. The true failure range is bounded by the *smaller* requirement — the load
-   must exceed both asymptotes — so failure extends to ≈ 177 m at most; with $t_d\approx$ 8–9 ms
-   against $T=10$ ms the response is dynamic, and the full SDOF gives a somewhat shorter range
-   (compare 50 m at 1 YU scaled by the regime shift).
+4. $W_\text{eff} = 18$, $W_\text{eff}^{1/3} = 2.62$. Pressure asymptote: $p_r = 2.5$ kPa ⇒
+   $p_s\approx1.24$ kPa ⇒ $Z = 67.9$ ⇒ $R_P = 178$ m. Impulse asymptote: reflected $i \approx 2i_s = 7.96$
+   ⇒ $i_s \approx 4.0$ kPa·ms ⇒ $i_s/W^{1/3} = 1.52$ ⇒ (impulse fit) $Z = 128.6$ ⇒ $R_I = 337$ m.
+   Failure requires the load to exceed *both* asymptotes, so the failure range is at most
+   $\min(R_P, R_I) = 178$ m. The full SDOF (reflected Friedlander, Sim D conventions) gives 139 m;
+   there $t_d\approx14$ ms against $T=10$ ms — the dynamic regime, closer to quasi-static.
 5. Strength helps against direct column loss at a given range but does nothing for
    *disproportionate* collapse after a loss at closer range; the defence is alternate paths,
    ties/continuity and ductility (OKC re-analysis). Doubling capacity also shifts failure mode

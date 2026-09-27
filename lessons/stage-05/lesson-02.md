@@ -400,7 +400,7 @@ tp = t[late][np.argmax(np.abs(Bb[late]), axis=0)]         # naive peak pick per 
 win = np.abs(x - 0.45) < 0.3
 x0, d, v = fit_hyperbola(x[win], tp[win])
 print(f"x0={x0:.3f} m depth={d:.3f} m v={v:.4f} m/ns eps_r={(C/v)**2:.2f}")
-# x0=0.450 m depth=0.200 m v=0.1001 m/ns eps_r=8.98
+# x0=0.450 m depth=0.200 m v=0.1001 m/ns eps_r=8.97
 ```
 
 <details class="answer"><summary>Exercise 5 — then reveal</summary>

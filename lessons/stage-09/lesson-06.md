@@ -62,14 +62,14 @@ $$ \mathbf x' = \mathbf x + \varepsilon\,\operatorname{sign}\big(\nabla_{\mathbf
 For a linear score $s(\mathbf x)=\mathbf w^\top\mathbf x+b$ the worst-case change of the score is
 exactly
 
-$$ \max_{\|\boldsymbol\delta\|_\infty\le\varepsilon} |\mathbf w^\top\boldsymbol\delta| = \varepsilon\,\|\mathbf w\|_1 . $$
+$$ \max_{\Vert \boldsymbol\delta\Vert _\infty\le\varepsilon} \lvert\mathbf w^\top\boldsymbol\delta\rvert = \varepsilon\,\Vert \mathbf w\Vert _1 . $$
 
 | Symbol | Meaning | Unit |
 |---|---|---|
 | $\mathbf x\in\mathbb R^d$ | input (e.g. pixels scaled to [0,1]) | — |
 | $\varepsilon$ | perturbation budget per input dimension | same as $\mathbf x$ |
 | $\nabla_{\mathbf x}\mathcal L$ | gradient of loss w.r.t. the input | — |
-| $\|\mathbf w\|_1=\sum_i|w_i|$ | L1 norm of weights | score per input unit |
+| $\Vert \mathbf w\Vert _1=\sum_i\lvert w_i\rvert $ | L1 norm of weights | score per input unit |
 | $d$ | input dimension | — |
 
 **Intuition.** Each pixel moves by an imperceptible $\varepsilon$, but the effect adds coherently
@@ -78,7 +78,7 @@ fixed. Deep networks are piecewise-linear enough for this to dominate (the Goodf
 "linearity" explanation). This is a statement about the *geometry of the learned function*, and
 it is exactly why robustness must be *measured*, not assumed.
 
-**Numerical example.** A 224×224×3 input: $d=150\,528$. With mean $|w_i|=0.001$ and a barely visible
+**Numerical example.** A 224×224×3 input: $d=150\,528$. With mean $\lvert w_i\rvert=0.001$ and a barely visible
 $\varepsilon=2/255$, the worst-case score change is $150\,528\cdot0.001\cdot0.00784=1.18$ logits —
 enough to flip a prediction with a 76 %/24 % confidence split (logit 1.15).
 
@@ -90,13 +90,13 @@ print(d, d * 0.001 * 2 / 255, np.log(0.76 / 0.24))    # 150528, 1.18, 1.15
 
 <details class="answer"><summary>Exercise 1 — then reveal</summary>
 
-(a) Show that $\boldsymbol\delta=\varepsilon\,\mathrm{sign}(\mathbf w)$ attains $\varepsilon\|\mathbf w\|_1$.
-(b) What is the worst-case score change for an $L_2$ budget $\|\boldsymbol\delta\|_2\le\varepsilon$?
-(c) For the numbers above, what $L_2$ radius gives the same 1.18-logit change if all $|w_i|=0.001$?
+(a) Show that $\boldsymbol\delta=\varepsilon\,\mathrm{sign}(\mathbf w)$ attains $\varepsilon\Vert \mathbf w\Vert _1$.
+(b) What is the worst-case score change for an $L_2$ budget $\Vert \boldsymbol\delta\Vert _2\le\varepsilon$?
+(c) For the numbers above, what $L_2$ radius gives the same 1.18-logit change if all $\lvert w_i\rvert=0.001$?
 
-*Answer.* (a) $\mathbf w^\top\boldsymbol\delta=\varepsilon\sum_i w_i\,\mathrm{sign}(w_i)=\varepsilon\sum|w_i|$;
-Hölder's inequality shows it is the maximum. (b) $\varepsilon\|\mathbf w\|_2$ (Cauchy–Schwarz),
-attained at $\boldsymbol\delta=\varepsilon\mathbf w/\|\mathbf w\|_2$. (c) $\|\mathbf w\|_2=0.001\sqrt{150528}=0.388$
+*Answer.* (a) $\mathbf w^\top\boldsymbol\delta=\varepsilon\sum_i w_i\,\mathrm{sign}(w_i)=\varepsilon\sum\lvert w_i\rvert $;
+Hölder's inequality shows it is the maximum. (b) $\varepsilon\Vert \mathbf w\Vert _2$ (Cauchy–Schwarz),
+attained at $\boldsymbol\delta=\varepsilon\mathbf w/\Vert \mathbf w\Vert _2$. (c) $\Vert \mathbf w\Vert _2=0.001\sqrt{150528}=0.388$
 ⇒ $\varepsilon_2=1.18/0.388=3.04$ — i.e. the same $L_\infty$ perturbation has $L_2$ norm
 $0.00784\sqrt{d}=3.04$. Threat models in different norms are not comparable without this conversion.
 
@@ -114,7 +114,7 @@ $$ \mathbf x^{(k+1)} = \Pi_{\mathcal B_\varepsilon(\mathbf x)}\!\Big(\mathbf x^{
 $\min_\theta\mathbb E\big[\max_{\boldsymbol\delta\in\mathcal B_\varepsilon}\mathcal L(\theta,\mathbf x+\boldsymbol\delta,y)\big]$,
 typically trading some clean accuracy for robustness. **Certified** defences give guarantees: if the
 logit vector is $L$-Lipschitz in $L_2$, a prediction with top-two margin $m>\sqrt2\,L\,\varepsilon$
-cannot be changed by any $\|\boldsymbol\delta\|_2\le\varepsilon$; randomised smoothing with Gaussian
+cannot be changed by any $\Vert \boldsymbol\delta\Vert _2\le\varepsilon$; randomised smoothing with Gaussian
 noise $\sigma$ certifies radius $R=\sigma\,\Phi^{-1}(\underline{p_A})$ where $\underline{p_A}$ is a
 lower confidence bound on the top-class probability under noise.
 
@@ -272,7 +272,7 @@ $$ \mathrm{PSI} = \sum_{i=1}^{B}(o_i-e_i)\ln\frac{o_i}{e_i} . $$
 | $o_i$ | proportion in bin $i$ in live data |
 | PSI | symmetrised KL divergence between binned distributions (nats) |
 
-**Intuition.** PSI is $\mathrm{KL}(o\|e)+\mathrm{KL}(e\|o)$ for the binned distributions. Common
+**Intuition.** PSI is $\mathrm{KL}(o\Vert e)+\mathrm{KL}(e\Vert o)$ for the binned distributions. Common
 industry heuristics treat < 0.1 as stable and > 0.25 as a major shift — these are rules of thumb,
 not statistics; set thresholds by bootstrapping PSI on in-distribution data of the same sample size.
 Monitor several signals: input statistics (brightness, thermal histogram, blur), model confidence
@@ -700,8 +700,11 @@ cost-weighted alert threshold. The same harness structure scales to a PyTorch de
   threshold and resulting TPR/FPR/PPV.
 - **Constraints:** NumPy only; PGD with projection onto the $L_\infty$ ball; fixed seeds; the harness
   must report the threat model alongside every robustness number.
-- **Expected behaviour:** robust accuracy ≈ $\Phi((0.1-\varepsilon)\sqrt{200})$; PSI ≈ 0 for a fresh
-  in-distribution sample and clearly larger for the shifted sample.
+- **Expected behaviour:** robust accuracy ≈ $\Phi((0.1-\varepsilon)\sqrt{200})$ (measured 0.919/0.873/0.757/0.498
+  vs theory 0.921/0.871/0.760/0.500); PSI ≈ 0.007 for a fresh in-distribution sample and ≈ 0.17 for
+  the shifted site; at a 100:1 cost ratio and 1 % prevalence the alert rule gives TPR ≈ 0.92,
+  FPR ≈ 0.08 and PPV ≈ 0.11 — the threshold is right, the evidence is weak, which is exactly what
+  cascades and multimodal corroboration are for.
 - **Test cases:** (i) $\varepsilon=0$ reproduces clean accuracy; (ii) PGD with 1 step equals FGSM
   when $\alpha=\varepsilon$; (iii) more PGD steps never *increase* robust accuracy (up to noise);
   (iv) PSI of a sample against itself is 0.
@@ -752,11 +755,13 @@ ref_scores = Xt @ w + b
 print("PSI fresh sample:", round(psi(ref_scores, sample(1000)[0] @ w + b), 3),
       "| PSI shifted site:", round(psi(ref_scores, sample(1000, shift=0.05)[0] @ w + b), 3))
 
-tau = 1 / (1 + 100)                                    # C_FN = 100 C_FP
-post = 1 / (1 + np.exp(-(Xt @ w + b)))                 # (calibrate before trusting this in practice)
-alert = post > tau
+# Cost-weighted alerting. Trained on balanced classes, the score approximates the log-likelihood
+# ratio (check calibration first!), so compare it with the LR threshold for the deployment prior.
+pi, cost_ratio = 0.01, 100                             # prevalence; C_FN / C_FP
+llr_thr = np.log((1 - pi) / (cost_ratio * pi))
+alert = (Xt @ w + b) > llr_thr
 tpr, fpr = alert[yt == 1].mean(), alert[yt == 0].mean()
-print(f"tau={tau:.4f} TPR={tpr:.3f} FPR={fpr:.3f} PPV@1%={tpr*0.01/(tpr*0.01+fpr*0.99):.3f}")
+print(f"LR threshold={np.exp(llr_thr):.2f}  TPR={tpr:.3f}  FPR={fpr:.3f}  PPV@1%={tpr*pi/(tpr*pi+fpr*(1-pi)):.3f}")
 ```
 
 Related project: [P12 — Human-in-the-loop decision support](projects/p12-hitl-decision/README.md)
@@ -791,7 +796,7 @@ Full bibliographic entries: [curriculum/sources.md](curriculum/sources.md).
 
 1. *(Conceptual)* Explain the difference between a robustness *evaluation* and a robustness
    *certificate*, and why a strong attack gives only an upper bound on robust accuracy.
-2. *(Mathematical)* For a linear model with $\|\mathbf w\|_1=40$ and a clean logit margin of 2.5, what
+2. *(Mathematical)* For a linear model with $\Vert \mathbf w\Vert _1=40$ and a clean logit margin of 2.5, what
    $L_\infty$ budget can flip the decision? Express it in 8-bit grey levels.
 3. *(Interpretation)* After a software update, the alert rate doubles while PSI on inputs is
    unchanged. Give two hypotheses and the data you would check.
@@ -805,7 +810,7 @@ Full bibliographic entries: [curriculum/sources.md](curriculum/sources.md).
 <details class="answer"><summary>Answers to 2 and 5</summary>
 
 2. $\varepsilon>2.5/40=0.0625$ in input units; on a [0,1] scale that is $0.0625\cdot255\approx16$ grey
-   levels — visible, but a real network's effective $\|\mathbf w\|_1$ is usually much larger.
+   levels — visible, but a real network's effective $\Vert \mathbf w\Vert _1$ is usually much larger.
 5. $n\ge\ln0.1/\ln0.95=44.9$ ⇒ 45.
 
 </details>
