@@ -352,7 +352,7 @@ discard*, only reorder (everything remains reviewable), and *measure recall per 
 
 **Audio-based synchronisation (GCC-PHAT).** Two recordings of the same sound field are related by
 a delay. The generalised cross-correlation with phase transform whitens the cross-spectrum,
-$R(f) = \frac{Y(f)X^\*(f)}{|Y(f)X^\*(f)|}$, and the inverse transform peaks sharply at the delay.
+$R(f) = \frac{Y(f)X^{*}(f)}{|Y(f)X^{*}(f)|}$, and the inverse transform peaks sharply at the delay.
 Delays then feed the offset least squares of 08.2 §8.
 
 ```python
@@ -370,13 +370,13 @@ print(gcc_phat_lag(a, b), gcc_phat_lag(a, b) / fs)    # 1234 0.15425 s
 
 <details class="answer"><summary>Exercise 4 — then reveal</summary>
 
-(a) With $n = 2\times10^5$ images, what dHash threshold $d^\*$ keeps the expected number of
+(a) With $n = 2\times10^5$ images, what dHash threshold $d^{*}$ keeps the expected number of
 false pairs below 1? (b) Why is the "shifted 3 px" variant a problem, and what would you add?
 
-*Answer.* (a) Need $\binom{n}{2}P(d\le d^\*) < 1$ with $\binom{n}{2}\approx2\times10^{10}$, i.e.
+*Answer.* (a) Need $\binom{n}{2}P(d\le d^{*}) < 1$ with $\binom{n}{2}\approx2\times10^{10}$, i.e.
 $P < 5\times10^{-11}$. $P(d\le 7) = \sum_{j\le7}\binom{64}{j}2^{-64} \approx 3.8\times10^{-11}$
 (0.76 expected false pairs), while $P(d\le8)\approx2.8\times10^{-10}$ (≈ 5.6 false pairs) →
-$d^\*=7$. A strict threshold lowers recall for genuine near-duplicates, so pair it with
+$d^{*}=7$. A strict threshold lowers recall for genuine near-duplicates, so pair it with
 verification. (b) dHash is a gradient-sign code on a fixed grid, so crops and shifts move content
 across cells. Add a shift-robust representation (keypoint matching with geometric verification,
 or learned embeddings with a calibrated threshold) in a second stage.
@@ -530,7 +530,7 @@ for an orthogonal method; blanks processed identically.
 <details class="answer"><summary>Practical 2 — Birthday-problem thresholds (calculation) — then reveal</summary>
 
 Instead of all-pairs comparison you index 64-bit hashes and query each image's neighbours within
-radius $d^\*$. For $n=10^6$ and $d^\*=10$, how many candidate pairs do you expect from unrelated
+radius $d^{*}$. For $n=10^6$ and $d^{*}=10$, how many candidate pairs do you expect from unrelated
 images, and how does using two independent 64-bit hashes (both must be within 10) change it?
 
 *Answer.* ≈ 5 000 false candidates (Section 8). With two independent hashes: $p^2 \approx

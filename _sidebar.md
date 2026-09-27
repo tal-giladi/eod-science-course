@@ -36,6 +36,9 @@
   - [Stage 4 overview](lessons/stage-04/README.md)
   - [04.1 · Anatomy of a blast wave](lessons/stage-04/lesson-01.md)
   - [04.2 · Distance, reflection, confinement & urban environments](lessons/stage-04/lesson-02.md)
+  - [04.3 · Structural effects](lessons/stage-04/lesson-03.md)
+  - [04.4 · Injury mechanisms, fragmentation & secondary hazards](lessons/stage-04/lesson-04.md)
+  - [Stage 4 gate assessment](assessments/stage-04.md)
 - **5 · Detection**
   - [Stage 5 overview](lessons/stage-05/README.md)
   - [05.1 · Detection theory: ROC, base rates, costs and test & evaluation](lessons/stage-05/lesson-01.md)
@@ -68,6 +71,7 @@
   - [08.1 · The post-blast scene](lessons/stage-08/lesson-01.md)
   - [08.2 · Reconstruction as an inverse problem](lessons/stage-08/lesson-02.md)
   - [08.3 · Laboratory & digital forensics](lessons/stage-08/lesson-03.md)
+  - [Stage 8 gate assessment](assessments/stage-08.md)
 - **9 · AI & computer vision**
   - [Stage 9 overview](lessons/stage-09/README.md)
   - [09.1 · Perception tasks for EOD: detection, segmentation, anomalies and the metrics that matter](lessons/stage-09/lesson-01.md)
@@ -93,6 +97,8 @@
 
 - **Programming projects**
   - [All projects](projects/index.md)
+  - [P05 · 2D robot simulator (`robotsim2d`)](projects/p05-robot-sim/README.md)
+  - [P07 · SLAM simulation: occupancy grids, ICP, EKF-SLAM and pose graphs](projects/p07-slam/README.md)
 
 - **Case studies**
   - [All case studies](case-studies/index.md)

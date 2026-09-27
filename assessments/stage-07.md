@@ -22,20 +22,20 @@ benign $B$ / hazardous $H$):
 | full response F | 30 | 35 |
 | release R | 0 | 1500 |
 
-(a) Compute $p^\*$ and the optimal action. (b) Compute EVPI. (c) An information action has
+(a) Compute $p^{*}$ and the optimal action. (b) Compute EVPI. (c) An information action has
 $P_d=0.95$, $P_{fa}=0.25$ and costs 5 LU. Compute its EVSI and decide whether to use it.
 (d) Explain in one sentence why the answer to (c) would change if $P_d$ were 0.90.
 
 <details class="answer"><summary>Answer — then reveal</summary>
 
-(a) $p^\* = 30/(30+1465) = 0.0201$; $p=0.04>p^\*$ → F. $\bar\ell(F) = 30+5\cdot0.04 = 30.2$,
+(a) $p^{*} = 30/(30+1465) = 0.0201$; $p=0.04>p^{*}$ → F. $\bar\ell(F) = 30+5\cdot0.04 = 30.2$,
 $\bar\ell(R)=60$.
 (b) $\mathcal L_{\text{PI}} = 0.04\cdot35 = 1.4$ → EVPI $= 28.8$ LU.
 (c) $P(+) = 0.95\cdot0.04 + 0.25\cdot0.96 = 0.038+0.24=0.278$; $P(H\mid+) = 0.1367$;
-$P(H\mid-) = 0.002/0.722 = 0.00277 < p^\*$ → release on negative.
+$P(H\mid-) = 0.002/0.722 = 0.00277 < p^{*}$ → release on negative.
 $\mathcal L_{\text{SI}} = 0.278\cdot(30+5\cdot0.1367) + 0.722\cdot(1500\cdot0.00277) = 0.278\cdot30.68 + 0.722\cdot4.155 = 8.53+3.00 = 11.53$.
 EVSI $= 30.2-11.53 = 18.67$ LU $>5$ → use it (net 13.7 LU).
-(d) With $P_d=0.90$: $P(H\mid-) = 0.004/(0.004+0.72) = 0.0055$ — still below $p^\*$, so it
+(d) With $P_d=0.90$: $P(H\mid-) = 0.004/(0.004+0.72) = 0.0055$ — still below $p^{*}$, so it
 would *not* change in kind; EVSI falls to ≈ 15.7 LU. It would change only once
 $P(H\mid-)$ exceeded 0.0201, i.e. for $P_d < 0.64$ approximately — the point is to check
 threshold crossing, not ROC quality.
@@ -72,14 +72,14 @@ change, and explain why.
 
 <details class="answer"><summary>Answer — then reveal</summary>
 
-(a) After one observation the belief is either ≈ 0.51 or ≈ 0.031; both exceed $p^\*=0.0201$, so
+(a) After one observation the belief is either ≈ 0.51 or ≈ 0.031; both exceed $p^{*}=0.0201$, so
 the action does not change and one-step EVSI $=0 < 1$. Two or more negatives can cross the
 threshold, which only non-myopic lookahead sees.
 (b) Predict step $b \leftarrow b + 0.02(1-b)$ before each Bayes update; the belief index is no
 longer an integer count, so use a belief grid (e.g. 2001 points with interpolation) for the
 Bellman recursion.
 (c) The belief is pushed up every step, so long look sequences can never drive it far below
-$p^\*$: the looking band shrinks, the optimal number of looks falls, and the mean loss rises.
+$p^{*}$: the looking band shrinks, the optimal number of looks falls, and the mean loss rises.
 In a non-stationary world, information decays — commit earlier, and protect against the
 possibility you cannot rule out.
 

@@ -6,7 +6,7 @@ _Last updated 2026-09-27. Started 2026-09-27._
 
 ## Where I am
 
-- **Lessons done:** 0/44 (0%)
+- **Lessons done:** 0/47 (0%)
 - **Open struggles:** 0
 - **Next:** [00.1 What EOD is: the field, its organisations and its vocabulary](lessons/stage-00/lesson-01.md)
 
@@ -61,9 +61,12 @@ python course.py struggle 05.2 "note"
 </details>
 
 <details>
-<summary><b>4 · Blast effects</b> — 0/1</summary>
+<summary><b>4 · Blast effects</b> — 0/4</summary>
 
 - [ ] ⬜ [04.1 Anatomy of a blast wave](lessons/stage-04/lesson-01.md)
+- [ ] ⬜ [04.2 Distance, reflection, confinement & urban environments](lessons/stage-04/lesson-02.md)
+- [ ] ⬜ [04.3 Structural effects](lessons/stage-04/lesson-03.md)
+- [ ] ⬜ [04.4 Injury mechanisms, fragmentation & secondary hazards](lessons/stage-04/lesson-04.md)
 
 </details>
 

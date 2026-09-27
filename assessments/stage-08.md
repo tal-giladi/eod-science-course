@@ -100,8 +100,8 @@ defensible in court.
 
 <details class="answer"><summary>Answer — then reveal</summary>
 
-(a) $\binom{n}{2}\approx1.25\times10^{11}$. Expected false pairs: $d^\*=5$: 0.056; $d^\*=6$:
-0.56; $d^\*=7$: 4.8 → **$d^\*=6$**. (b) $41/45 = 0.91$, 95 % CI ≈ [0.79, 0.98]. (c) Hash every
+(a) $\binom{n}{2}\approx1.25\times10^{11}$. Expected false pairs: $d^{*}=5$: 0.056; $d^{*}=6$:
+0.56; $d^{*}=7$: 4.8 → **$d^{*}=6$**. (b) $41/45 = 0.91$, 95 % CI ≈ [0.79, 0.98]. (c) Hash every
 original on ingest and log every transform (custody); the model only *reorders* — nothing is
 discarded — and every evidential finding is confirmed by a human examiner; also report recall
 per stratum (day/night, camera type) at the operating budget.

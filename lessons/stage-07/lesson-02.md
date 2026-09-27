@@ -418,20 +418,20 @@ while the need is still uncertain. With $q$ = P(specialist capability needed), $
 cost of an unnecessary escalation and $c_{\text{late}}(\tau)$ = extra loss if the need is
 confirmed only later and the capability arrives $\tau$ late, escalate now iff
 
-$$ q\, c_{\text{late}}(\tau) > (1-q)\,c_{\text{esc}} \iff q > q^\* = \frac{c_{\text{esc}}}{c_{\text{esc}} + c_{\text{late}}(\tau)} . $$
+$$ q\, c_{\text{late}}(\tau) > (1-q)\,c_{\text{esc}} \iff q > q^{*} = \frac{c_{\text{esc}}}{c_{\text{esc}} + c_{\text{late}}(\tau)} . $$
 
 Because $c_{\text{late}}$ grows with $\tau$, **the longer the lead time, the lower the belief at
 which you should escalate** — the formal reason why organisations write escalation *criteria*
 triggered by indicators rather than by confirmation. Example: $c_{\text{esc}}=10$ LU,
-$c_{\text{late}}=190$ LU gives $q^\*=0.05$.
+$c_{\text{late}}=190$ LU gives $q^{*}=0.05$.
 
 <details class="answer"><summary>Exercise 5 — then reveal</summary>
 
 A specialist team is 3 h away and $c_{\text{late}}$ grows linearly at 80 LU/h of delay;
-$c_{\text{esc}} = 30$ LU. Compute $q^\*$. What if a closer team (45 min) exists?
+$c_{\text{esc}} = 30$ LU. Compute $q^{*}$. What if a closer team (45 min) exists?
 
-*Answer.* 3 h: $c_{\text{late}}=240$, $q^\* = 30/270=0.111$. 45 min: $c_{\text{late}}=60$,
-$q^\*=30/90=0.33$. Distant capabilities must be requested on weaker indicators.
+*Answer.* 3 h: $c_{\text{late}}=240$, $q^{*} = 30/270=0.111$. 45 min: $c_{\text{late}}=60$,
+$q^{*}=30/90=0.33$. Distant capabilities must be requested on weaker indicators.
 
 </details>
 
@@ -557,7 +557,7 @@ scenario hides.
 
 **Sim F — Incident Command.** In the *Expert* scenario, a second report arrives mid-incident.
 Log the trigger you set beforehand, whether it fired, and how your escalation timing compared
-with the $q^\*$ logic of Section 9.
+with the $q^{*}$ logic of Section 9.
 
 </div>
 

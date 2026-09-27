@@ -47,7 +47,7 @@ certified training.
    losses, and the belief state that summarises everything observed.
 2. Perform Bayesian updating in odds and log-odds form, and explain why likelihood ratios — not
    raw "hit rates" — are the currency of evidence.
-3. Derive expected-loss decisions, the **decision threshold** $p^\*$, the **expected value of
+3. Derive expected-loss decisions, the **decision threshold** $p^{*}$, the **expected value of
    perfect information** (EVPI) and **of sample information** (EVSI); compute them for a
    fictional incident and explain when information is worth exactly zero.
 4. Express **exposure minimisation** as an objective (integrated hazard over people and time) and
@@ -168,15 +168,15 @@ $$
 and the **decision threshold** where they cross is
 
 $$
-p^\* = \frac{\ell(F,B)-\ell(R,B)}{\big(\ell(F,B)-\ell(R,B)\big) + \big(\ell(R,H)-\ell(F,H)\big)} = \frac{20}{20+975} = 0.0201 .
+p^{*} = \frac{\ell(F,B)-\ell(R,B)}{\big(\ell(F,B)-\ell(R,B)\big) + \big(\ell(R,H)-\ell(F,H)\big)} = \frac{20}{20+975} = 0.0201 .
 $$
 
 | Symbol | Meaning | Unit |
 |---|---|---|
 | $\bar\ell(a)=\sum_s b(s)\ell(s,a)$ | expected loss of action $a$ under belief $b$ | LU |
-| $p^\*$ | belief above which F is optimal | — |
+| $p^{*}$ | belief above which F is optimal | — |
 
-**Intuition.** $p^\*$ is the ratio of the *cost of a false alarm* to the *total cost of both
+**Intuition.** $p^{*}$ is the ratio of the *cost of a false alarm* to the *total cost of both
 errors*. When the catastrophic cost dwarfs the disruption cost, the threshold is tiny: you
 maintain the full response even when you believe the item is 98 % likely to be benign. That is
 not paranoia; it is arithmetic. It is also why false alarms are not "mistakes" — at a 2 %
@@ -198,9 +198,9 @@ you are in, and write it down.
 <details class="answer"><summary>Exercise 2 — then reveal</summary>
 
 A policy change raises the disruption loss of F to 60 LU (a major transport interchange at rush
-hour). Compute the new $p^\*$. Does the optimal action at $p=0.03$ change?
+hour). Compute the new $p^{*}$. Does the optimal action at $p=0.03$ change?
 
-*Answer.* $p^\* = 60/(60 + 975) = 0.058$. At $p=0.03$: $\bar\ell(F) = 60+5\cdot0.03 = 60.15$,
+*Answer.* $p^{*} = 60/(60 + 975) = 0.058$. At $p=0.03$: $\bar\ell(F) = 60+5\cdot0.03 = 60.15$,
 $\bar\ell(R)=30$ → release becomes optimal under pure expected loss. A risk-constraint regime
 (e.g. release only if $p<0.01$) would still hold the full response. This is exactly the tension
 the Frankfurt 2017 and London City Airport 2018 cases in [research/03](research/03-detection-forensics-sources.md)
@@ -253,14 +253,14 @@ analyst can be worth more.
 | $\mathcal L_{\text{PI}}$ | $0.845\cdot 0 + 0.155\cdot 25$ | 3.88 LU |
 | **EVPI** | | **16.90 LU** |
 | Test A: $P_d=0.90$, $P_{fa}=0.20$ | $P(+)=0.309$; $P(H\mid+)=0.452$; $P(H\mid-)=0.0224$ | |
-| $\mathcal L_{\text{SI}}$ (A) | both posteriors $>p^\*$ → F either way | 20.78 LU |
+| $\mathcal L_{\text{SI}}$ (A) | both posteriors $>p^{*}$ → F either way | 20.78 LU |
 | **EVSI (A)** | | **0** |
 | Test B: $P_d=0.97$, $P_{fa}=0.20$ | $P(+)=0.319$; $P(H\mid+)=0.471$; $P(H\mid-)=0.0068$ | |
 | $\mathcal L_{\text{SI}}$ (B) | $0.319\cdot22.35 + 0.681\cdot6.83$ | 11.79 LU |
 | **EVSI (B)** | | **8.99 LU** |
 
 Test A is a *good* sensor — and worth exactly nothing here, because neither of its outcomes can
-move the belief below $p^\*=0.0201$ (the negative result lands at 0.0224). Test B is only
+move the belief below $p^{*}=0.0201$ (the negative result lands at 0.0224). Test B is only
 slightly better in sensitivity, but a negative result from it crosses the threshold, so it has
 value. **Sensitivity matters most exactly where a negative result must carry you across a very low
 threshold** — the same asymmetry that drives humanitarian clearance requirements in
@@ -293,12 +293,12 @@ print(round(evsi(0.155, 0.97, 0.20), 2))     # 8.99
 <details class="answer"><summary>Exercise 3 — derive, then reveal</summary>
 
 (a) Show that for a two-action, two-state problem EVSI $=0$ whenever both posteriors $b_+$ and
-$b_-$ lie on the same side of $p^\*$. (b) For Test B, what is the largest acquisition cost $c_I$
+$b_-$ lie on the same side of $p^{*}$. (b) For Test B, what is the largest acquisition cost $c_I$
 (in LU) for which gathering it is rational? (c) Find the smallest $P_d$ (with $P_{fa}=0.2$) that
 gives Test A non-zero value.
 
-*Answer.* (a) If both posteriors favour the same action $a^\*$, then
-$\mathcal L_{\text{SI}}=\sum_o P(o)\bar\ell_{b_o}(a^\*)=\bar\ell_b(a^\*)=\mathcal L_0$ by the
+*Answer.* (a) If both posteriors favour the same action $a^{*}$, then
+$\mathcal L_{\text{SI}}=\sum_o P(o)\bar\ell_{b_o}(a^{*})=\bar\ell_b(a^{*})=\mathcal L_0$ by the
 law of total probability (expected loss is linear in $b$). (b) 8.99 LU. (c) Need
 $P(H\mid-) < 0.0201$: $\frac{(1-P_d)\,0.155}{(1-P_d)0.155 + 0.8\cdot0.845} < 0.0201$ ⇒
 $(1-P_d) < 0.0201\cdot0.676/(0.155\cdot0.9799) = 0.0895$ ⇒ $P_d > 0.911$.
@@ -380,12 +380,12 @@ $$
 | $c_I$ | cost per look (time, exposure, disruption) | LU |
 
 **Intuition.** $V_h$ is a concave, piecewise-linear function of $b$ (a minimum of linear
-functions). Near $b=0$ and $b=1$ stopping is optimal; in a band around $p^\*$ looking is optimal.
+functions). Near $b=0$ and $b=1$ stopping is optimal; in a band around $p^{*}$ looking is optimal.
 This band is the mathematical version of "we don't know enough yet". It is exactly Wald's
 sequential probability ratio test, generalised to arbitrary losses.
 
 **Why myopic VOI fails.** A tempting heuristic is: "look once more if the one-step EVSI exceeds
-$c_I$". But one look may be unable to cross $p^\*$ while *three* looks can — so the myopic rule
+$c_I$". But one look may be unable to cross $p^{*}$ while *three* looks can — so the myopic rule
 says "stop" at a belief where the Bellman solution says "keep looking". The simulation below
 shows this happening at the prior.
 
@@ -565,7 +565,7 @@ Loss matrix as in Section 3 (policy: expected loss, no additional risk constrain
 information action has a time cost converted to LU by the planning cell (1 LU per 5 min of
 full-response disruption).
 
-1. **07:50 — initial report.** Belief 0.02 ≈ $p^\*$ (0.0201). Commitment is a knife-edge; the
+1. **07:50 — initial report.** Belief 0.02 ≈ $p^{*}$ (0.0201). Commitment is a knife-edge; the
    right move is to take the *cheap, reversible* protective action (initial isolation, 07.2)
    and gather information. EVPI at $p=0.02$: $\mathcal L_0 = \min(20.1, 20.0) = 20.0$,
    $\mathcal L_{\text{PI}} = 0.5$ → EVPI $=19.5$ LU. Information is worth a great deal.
@@ -574,7 +574,7 @@ full-response disruption).
    its rationale). Belief: odds $0.0204\cdot4=0.0816$ → $p=0.075$.
 3. **08:05 — abstract standoff sensor** with $P_d=0.9$, $P_{fa}=0.1$, positive → odds $0.735$,
    $p=0.42$. Now both a positive and a negative from any *further* modest sensor would leave
-   the belief above $p^\*$ — one-step EVSI of more of the same is ≈ 0. The Bellman view asks a
+   the belief above $p^{*}$ — one-step EVSI of more of the same is ≈ 0. The Bellman view asks a
    different question: is there an information action with a *large* likelihood ratio (e.g.
    remote imaging that could clearly show benign contents)? If so, it has value; if not, stop
    gathering and commit to F.
@@ -609,10 +609,10 @@ made the remote option dominant?
 <details class="answer"><summary>Practical 1 — Threshold sensitivity (interpretation) — then reveal</summary>
 
 A reviewer argues your 1000 LU catastrophic loss is "made up" and could be anything from 300 to
-5000. Compute $p^\*$ over that range and state what this means for the robustness of the
+5000. Compute $p^{*}$ over that range and state what this means for the robustness of the
 decision at $p=0.155$ and at $p=0.02$.
 
-*Answer.* $p^\* = 20/(20 + \ell_{RH}-25)$: 300 → 0.068; 1000 → 0.0201; 5000 → 0.0040. At
+*Answer.* $p^{*} = 20/(20 + \ell_{RH}-25)$: 300 → 0.068; 1000 → 0.0201; 5000 → 0.0040. At
 $p=0.155$ the decision (F) is robust across the range. At $p=0.02$ it is not: the choice depends
 on the value judgement. Robust decisions are those insensitive to the numbers nobody can defend;
 flag the others for policy-level, not incident-level, resolution.
@@ -626,7 +626,7 @@ belief), 3 LU; (ii) a remote imaging run ($P_d=0.97$, $P_{fa}=0.2$), 6 LU. Belie
 Which do you choose?
 
 *Answer.* (i) Posteriors: odds 0.184 → ×2 = 0.367 ($p=0.27$) or ×0.7 = 0.129 ($p=0.114$). Both
-above $p^\*$ → EVSI $=0$; net −3 LU. (ii) EVSI $= 8.99$ LU (Section 4), net +2.99 LU. Choose
+above $p^{*}$ → EVSI $=0$; net −3 LU. (ii) EVSI $= 8.99$ LU (Section 4), net +2.99 LU. Choose
 (ii). Note that (i) might still be valuable for *other* reasons (evidence, 07.2) — which a
 richer loss function would capture.
 
@@ -703,7 +703,7 @@ classifiers and conformal prediction sets as the "sensors".
 1. *(Conceptual)* Explain why a sensor with excellent ROC performance can have zero value of
    information in a particular incident, and why the same sensor may be highly valuable in
    another.
-2. *(Mathematical)* Derive $p^\*$ for a general 2×2 loss matrix and show it depends only on the
+2. *(Mathematical)* Derive $p^{*}$ for a general 2×2 loss matrix and show it depends only on the
    two *regret* terms $\ell(F,B)-\ell(R,B)$ and $\ell(R,H)-\ell(F,H)$.
 3. *(Mathematical)* For the Section 3 matrix at $p=0.05$, compute EVPI and the EVSI of Test B.
 4. *(Interpretation)* A Sim F debrief shows you requested five information actions after your
@@ -715,7 +715,7 @@ classifiers and conformal prediction sets as the "sensors".
 <details class="answer"><summary>Answers to 2 and 3</summary>
 
 2. Setting $\bar\ell(F)=\bar\ell(R)$: $(1-p)\ell_{FB} + p\ell_{FH} = (1-p)\ell_{RB} + p\ell_{RH}$
-   ⇒ $p^\* = \dfrac{\ell_{FB}-\ell_{RB}}{(\ell_{FB}-\ell_{RB}) + (\ell_{RH}-\ell_{FH})}$. Adding a
+   ⇒ $p^{*} = \dfrac{\ell_{FB}-\ell_{RB}}{(\ell_{FB}-\ell_{RB}) + (\ell_{RH}-\ell_{FH})}$. Adding a
    constant to a *column* (state) leaves it unchanged — only regrets matter.
 3. $\mathcal L_0 = \min(20.25, 50) = 20.25$; $\mathcal L_{\text{PI}} = 0.05\cdot25=1.25$ → EVPI
    $=19.0$ LU. Test B: $P(+) = 0.97\cdot0.05+0.2\cdot0.95=0.2385$; $P(H\mid+)=0.2034$;

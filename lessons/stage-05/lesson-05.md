@@ -161,7 +161,7 @@ smaller aperture buys resolution at the cost of $\Delta T_{\min}$ and range.
 
 **Planck's law** gives the spectral radiance of a black body:
 
-$$ L_\lambda(T) = \frac{2hc^2}{\lambda^5}\,\frac{1}{\exp\!\big(hc/\lambda k_B T\big) - 1}, \qquad \lambda_{\max} T = b = 2898\ \mu\text{m·K (Wien)}, \qquad M = \sigma T^4 . $$
+$$ L_\lambda(T) = \frac{2hc^2}{\lambda^5}\,\frac{1}{\exp\!\big(hc/\lambda k_B T\big) - 1}, \qquad \lambda_{\max} T = b = 2898\ \mu\text{m}\cdot\text{K (Wien)}, \qquad M = \sigma T^4 . $$
 
 | Symbol | Meaning | SI unit |
 |---|---|---|

@@ -206,7 +206,7 @@ is in abstract YU and $Z$ in m·YU⁻¹ᐟ³; the published fits are in m·kg⁻
 $$ \frac{p_s}{p_0} = \frac{808\left[1+\left(\dfrac{Z}{4.5}\right)^2\right]}{\sqrt{1+\left(\dfrac{Z}{0.048}\right)^2}\sqrt{1+\left(\dfrac{Z}{0.32}\right)^2}\sqrt{1+\left(\dfrac{Z}{1.35}\right)^2}} $$
 
 $$ \frac{t_d}{W^{1/3}} = \frac{980\left[1+\left(\frac{Z}{0.54}\right)^{10}\right]}{\left[1+\left(\frac{Z}{0.02}\right)^{3}\right]\left[1+\left(\frac{Z}{0.74}\right)^{6}\right]\sqrt{1+\left(\frac{Z}{6.9}\right)^{2}}}\ \text{ms},\qquad
-\frac{i_s}{W^{1/3}} = \frac{0.067\sqrt{1+\left(\frac{Z}{0.23}\right)^4}}{Z^2\sqrt[3]{1+\left(\frac{Z}{1.55}\right)^3}}\ \text{bar·ms} $$
+\frac{i_s}{W^{1/3}} = \frac{0.067\sqrt{1+\left(\frac{Z}{0.23}\right)^4}}{Z^2\sqrt[3]{1+\left(\frac{Z}{1.55}\right)^3}}\ \text{bar}\cdot\text{ms} $$
 
 </div>
 

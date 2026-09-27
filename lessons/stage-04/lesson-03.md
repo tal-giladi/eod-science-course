@@ -262,7 +262,7 @@ damage band is it in? (c) Check with the impulsive approximation $x \approx I/\s
 *Answer.* (a) $k = 100(2\pi/0.02)^2 = 9.87\times10^6$ Pa/m. $x_c=1$ cm: $P^*=49.3$ kPa,
 $I^* = 0.01\sqrt{9.87\times10^8} = 314$ kPa·ms; 3 cm: 148 kPa, 942 kPa·ms. (b) $\omega t_d = 0.74$ —
 nearly impulsive; $I = 581$ lies between 314 and 942 ⇒ between "low" and "moderate". (c)
-$581/31\,416\,\text{Pa·s/m} = 1.85$ cm; the full numerical Friedlander response gives 1.83 cm. ✔
+$581/31\,416\,\text{Pa}\cdot\text{s/m} = 1.85$ cm; the full numerical Friedlander response gives 1.83 cm. ✔
 
 </details>
 
@@ -371,7 +371,7 @@ at which the expected blast effect (predominantly overpressure; for surface stor
 surface-burst field) is judged acceptable for that type of exposure: small $K$ for
 inter-magazine distances (prevent propagation between stores), intermediate $K$ for public
 traffic routes, larger $K$ for inhabited buildings. US practice quotes $K$ in ft·lb⁻¹ᐟ³ — e.g. the
-familiar "K40" inhabited-building factor; conversion: $1\ \text{ft·lb}^{-1/3} = 0.3048/0.4536^{1/3} = 0.397$
+familiar "K40" inhabited-building factor; conversion: $1\ \text{ft}\cdot\text{lb}^{-1/3} = 0.3048/0.4536^{1/3} = 0.397$
 m·kg⁻¹ᐟ³, so K40 ≈ 15.9 m·kg⁻¹ᐟ³. Evaluated with Kinney–Graham and a 1.8 surface factor,
 $Z = 15.9/1.216 = 13.0$ gives $p_s \approx 7$ kPa — the level where glazing damage becomes likely but
 building structure is not threatened. Regulations then add **minimum distances** for fragments and

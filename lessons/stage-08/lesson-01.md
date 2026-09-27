@@ -168,7 +168,7 @@ $\sum_i p_i\big(1-e^{-k_ie_i}\big)$ subject to $\sum_i e_i=E$ (Lagrangian, KKT) 
 solution
 
 $$
-e_i^\* = \frac{1}{k_i}\ln\!\frac{p_i k_i}{\lambda}\quad\text{for } p_i k_i > \lambda,\qquad e_i^\*=0 \text{ otherwise},
+e_i^{*} = \frac{1}{k_i}\ln\!\frac{p_i k_i}{\lambda}\quad\text{for } p_i k_i > \lambda,\qquad e_i^{*}=0 \text{ otherwise},
 $$
 
 with the multiplier $\lambda$ set by the budget — a "water-filling" allocation that equalises the

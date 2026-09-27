@@ -303,6 +303,38 @@ full specification.
 | Assessment | 8 questions + hidden-answer exercises; stage gate [assessments/stage-04.md](assessments/stage-04.md) |
 | Next | [04.3 Structural effects](lessons/stage-04/lesson-03.md) and [04.4 Injury, fragmentation & secondary hazards](lessons/stage-04/lesson-04.md); later [08.2 Reconstruction](lessons/stage-08/lesson-02.md). |
 
+### [04.3 · Structural effects](lessons/stage-04/lesson-03.md)
+
+| Field | Specification |
+|---|---|
+| Prerequisites | [04.2 Distance, reflection, confinement & urban environments](lessons/stage-04/lesson-02.md) · [01.6 Structural response & fragmentation](lessons/stage-01/lesson-06.md) (SDOF oscillator, impulsive vs quasi-static regimes, P–I asymptotes) · ODEs, energy methods. **Estimated time** 6 h (3 h theory · 1 h simulator · 2 h programming) |
+| Estimated time | 6 h (3 h theory · 1 h simulator · 2 h programming) |
+| Level | Intermediate → Advanced |
+| Learning objectives | 1. Explain why glazing is the dominant urban blast-injury source and compute the range at which a<br>2. Build an equivalent SDOF model of a wall or panel using load and mass transformation factors<br>3. Derive the impulsive and quasi-static asymptotes of a P–I diagram by energy balance for elastic<br>4. Explain progressive collapse and the structural principles that resist it (redundancy,<br>5. Summarise the protective-design philosophy of UFC 3-340-02 (and ASCE practice): standoff first,<br>6. Interpret quantity-distance rules $D = K\,Q^{1/3}$ as Hopkinson scaling applied to regulation, and |
+| Theory | 1. The glazing hazard · 2. Walls and frames: failure modes and the equivalent SDOF system · 3. P–I diagrams from energy balance · 4. Using P–I diagrams in practice · 5. Progressive collapse — the Oklahoma City case · 6. Protective-design philosophy · 7. Quantity-distance: scaling applied to regulation |
+| Visual explanation | mermaid diagram + embedded simulator |
+| Simulation | [blast-physics](sims/blast-physics/index.html) |
+| Programming | [p01-blast-wave](projects/p01-blast-wave/README.md) |
+| Reading | 7 selected items (see lesson) |
+| Assessment | 7 questions + hidden-answer exercises; stage gate [assessments/stage-04.md](assessments/stage-04.md) |
+| Next | [04.4 Injury mechanisms, fragmentation & secondary hazards](lessons/stage-04/lesson-04.md); case study [Oklahoma City 1995](case-studies/cs03-oklahoma-city.md). |
+
+### [04.4 · Injury mechanisms, fragmentation & secondary hazards](lessons/stage-04/lesson-04.md)
+
+| Field | Specification |
+|---|---|
+| Prerequisites | [04.2 Distance, reflection, confinement & urban environments](lessons/stage-04/lesson-02.md) · [04.3 Structural effects](lessons/stage-04/lesson-03.md) (P–I diagrams) · [01.6 Structural response & fragmentation](lessons/stage-01/lesson-06.md) (fragment drag, statistics) · basic probability (lognormal, Monte Carlo). **Estimated time** 6 h (3 h theory · 1 h simulator · 2 h programming) |
+| Estimated time | 6 h (3 h theory · 1 h simulator · 2 h programming) |
+| Level | Intermediate → Advanced |
+| Learning objectives | 1. Classify blast injuries as primary, secondary, tertiary or quaternary, and map each to the<br>2. Explain lung and ear injury criteria (including the Bowen curves) as P–I-style criteria, state<br>3. Compute a hazardous-fragment distance from a fragment count, a density criterion and a drag<br>4. Explain conceptually how a public stand-off chart is derived from scaled distance and<br>5. Apply time–distance–shielding reasoning and state what personal protective equipment can and<br>6. Identify secondary hazards (fire, collapse, utilities, additional devices, CBRN) and their<br>7. Build and verify a Monte Carlo model that selects an evacuation radius achieving < 1 % |
+| Theory | 1. The four classes of blast injury · 2. Primary injury as a P–I criterion · 3. Tertiary injury: displacement by the blast wind · 4. Fragment hazard · 5. Public stand-off tables — how they are derived · 6. Time, distance, shielding — and what PPE can do · 7. Secondary hazards |
+| Visual explanation | mermaid diagram + embedded simulator |
+| Simulation | [blast-physics](sims/blast-physics/index.html) |
+| Programming | [p12-hitl-decision](projects/p12-hitl-decision/README.md) |
+| Reading | 6 selected items (see lesson) |
+| Assessment | 8 questions + hidden-answer exercises; stage gate [assessments/stage-04.md](assessments/stage-04.md) |
+| Next | [07.1 Decisions under uncertainty](lessons/stage-07/lesson-01.md) · [07.2 Incident management](lessons/stage-07/lesson-02.md) · case study [Boston 2013](case-studies/cs07-boston-2013.md). |
+
 ## Stage 5 · Detection
 
 ### [05.1 · Detection theory: ROC, base rates, costs and test & evaluation](lessons/stage-05/lesson-01.md)
@@ -572,7 +604,7 @@ full specification.
 | Prerequisites | [05.1 Detection theory](lessons/stage-05/lesson-01.md) (Bayes, likelihood ratios, ROC) · [05.6 Sensor fusion](lessons/stage-05/lesson-06.md) (log-odds fusion, expected information gain) · [04.4 Injury, fragments & secondary hazards](lessons/stage-04/lesson-04.md) · [03.4 Improvised hazards](lessons/stage-03/lesson-04.md) (the suspicious-item assessment) · probability and dynamic programming. **Estimated time** 8 h (3.5 h theory · 2 h simulators · 2.5 h programming) |
 | Estimated time | 8 h (3.5 h theory · 2 h simulators · 2.5 h programming) |
 | Level | Advanced |
-| Learning objectives | 1. Formulate an incident as a sequential decision problem: hidden state, observations, actions,<br>2. Perform Bayesian updating in odds and log-odds form, and explain why likelihood ratios — not<br>3. Derive expected-loss decisions, the **decision threshold** $p^\*$, the **expected value of<br>4. Express **exposure minimisation** as an objective (integrated hazard over people and time) and<br>5. Explain the POMDP framing, solve a one-dimensional belief-state problem by Bellman recursion,<br>6. Recognise anchoring, confirmation bias, sunk cost and plan-continuation bias in a decision log,<br>7. Contrast naturalistic (recognition-primed) and analytic decision making, and say when each is |
+| Learning objectives | 1. Formulate an incident as a sequential decision problem: hidden state, observations, actions,<br>2. Perform Bayesian updating in odds and log-odds form, and explain why likelihood ratios — not<br>3. Derive expected-loss decisions, the **decision threshold** $p^{*}$, the **expected value of<br>4. Express **exposure minimisation** as an objective (integrated hazard over people and time) and<br>5. Explain the POMDP framing, solve a one-dimensional belief-state problem by Bellman recursion,<br>6. Recognise anchoring, confirmation bias, sunk cost and plan-continuation bias in a decision log,<br>7. Contrast naturalistic (recognition-primed) and analytic decision making, and say when each is |
 | Theory | 1. The incident as a sequential decision problem · 2. Hypotheses and Bayesian updating · 3. Expected loss and the decision threshold · 4. Value of information: EVPI and EVSI · 5. Exposure minimisation as an objective · 6. The POMDP framing: belief states and Bellman recursion · 7. Cognitive biases and structural debiasing · 8. Naturalistic vs analytic decision making |
 | Visual explanation | mermaid diagram + embedded simulator |
 | Simulation | [incident-command](sims/incident-command/index.html), [scene-assessment](sims/scene-assessment/index.html) |
