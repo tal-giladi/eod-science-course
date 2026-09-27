@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sim C · Sensor Fusion</title>
+<link rel="stylesheet" href="../common/sim.css">
+<style>
+  .layout { grid-template-columns: 290px 1fr 360px; }
+  #grid { cursor: pointer; }
+  .sensors button { width: 100%; text-align: left; margin: 3px 0; display: flex; justify-content: space-between; }
+  .pbar { display: grid; grid-template-columns: 90px 1fr 54px; gap: 6px; align-items: center; font-family: var(--mono); font-size: 12px; margin: 2px 0; }
+  .pbar .b { height: 8px; background: #1a2330; border-radius: 3px; overflow: hidden; }
+  .pbar .b > div { height: 100%; }
+  table.spec { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 11px; }
+  table.spec td, table.spec th { border-bottom: 1px solid var(--line); padding: 2px 4px; text-align: right; }
+  table.spec th:first-child, table.spec td:first-child { text-align: left; }
+  @media (max-width: 1100px) { .layout { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="layout">
+  <div class="panel">
+    <h2>Mission</h2>
+    <div class="hint" id="brief"></div>
+    <div class="kv" id="status" style="margin-top:8px"></div>
+    <h2 style="margin-top:12px">Environment</h2>
+    <div class="kv" id="env"></div>
+    <h2 style="margin-top:12px">Sensors (selected cell)</h2>
+    <div class="sensors" id="sensors"></div>
+    <h2 style="margin-top:12px">Declare selected cell</h2>
+    <div class="row">
+      <button id="mH" class="danger">hazard</button>
+      <button id="mC">clear</button>
+      <button id="mU">needs more data</button>
+    </div>
+    <div class="row"><label style="width:100%">your P(hazard) for this cell: <span class="mono" id="pv">—</span></label>
+      <input type="range" id="pslider" min="0" max="1" step="0.01" value="0.5"></div>
+    <div class="row"><button class="primary" id="finish">Finish &amp; debrief</button></div>
+  </div>
+  <div class="panel">
+    <h2>Survey grid (fictional field) <span class="hint" id="legend"></span></h2>
+    <canvas id="grid"></canvas>
+    <div class="hint">Click a cell to select it. Fill colour = the auto-fusion posterior P(hazard) (hidden at Advanced/Expert). Marks: <b style="color:var(--red)">■</b> hazard · <b style="color:var(--green)">■</b> clear · <b style="color:var(--yellow)">?</b> needs data.</div>
+  </div>
+  <div class="panel">
+    <h2>Cell <span id="cellId"></span> · readings</h2>
+    <div class="log" id="readings" style="max-height:170px"></div>
+    <h2 style="margin-top:10px">Auto-fusion posterior (naive independent Bayes)</h2>
+    <div id="post"></div>
+    <div class="hint" id="voi"></div>
+    <h2 style="margin-top:10px">Sensor spec sheet</h2>
+    <div id="spec"></div>
+  </div>
+</div>
+<script src="../common/eod.js"></script>
+<script>
+(function () {
+  'use strict';
+  var U = EOD.util, level;
+  var diff = EOD.ui.difficultySelect(function (v) { level = v; location.href = location.pathname + '?level=' + v; });
+  level = diff.value;
+  EOD.ui.header('C', 'Sensor Fusion', 'combine imperfect evidence · budget · correlated errors', [U.el('span', { class: 'hint' }, 'difficulty'), diff]);
+  var seed = EOD.seedFromUrl(), R = EOD.rng(seed);
+
+  // ---------------------------------------------------------------- world model
+  var CLASSES = ['empty', 'metal clutter', 'rock', 'hazard-M', 'hazard-L'];
+  var HAZ = [false, false, false, true, true];
+  var COLORS = ['#6b7a90', '#9fb0c6', '#a3845c', '#f87171', '#fb923c'];
+  var NX = 12, NY = 8;
+  var L = { Beginner: { budget: 150, pH: 0.10 }, Intermediate: { budget: 125, pH: 0.08 }, Advanced: { budget: 105, pH: 0.07 }, Expert: { budget: 90, pH: 0.06 } }[level];
+  var prior = [0.55 - L.pH, 0.2, 0.25, L.pH * 0.6, L.pH * 0.4];
+  var env = { hour: R.pick([6, 9, 12, 15, 19, 23]), moisture: R.pick(['dry', 'moist', 'wet']), mineral: R.pick(['low', 'high']) };
+  // diurnal thermal contrast factor: buried objects show contrast when the soil is heating or cooling
+  var thermalGain = Math.abs(Math.sin((env.hour - 6) / 24 * 2 * Math.PI)) * 0.9 + 0.1;
+  // sensor definitions: mean response per class (arbitrary units), noise components
+  // pb = persistent (per cell, per sensor) error SD — does NOT average out with repeats
+  // pf = fresh noise SD per reading; shared = loading on a per-cell surface-disturbance latent (camera & thermal)
+  var S = {
+    camera:  { name: 'Camera (surface anomaly)', cost: 1, mu: [0, 0.3, 0.8, 1.2, 1.2], pb: 0.5, pf: 0.35, shared: 0.6 },
+    thermal: { name: 'Thermal IR (contrast)', cost: 2, mu: [0, 0.4, 0.6, 1.6, 1.8].map(function (m) { return m * thermalGain; }), pb: 0.35, pf: 0.3, shared: 0.5 },
+    metal:   { name: 'EMI metal detector', cost: 2, mu: [0, 2.6, env.mineral === 'high' ? 1.2 : 0.2, 2.8, 0.7], pb: 0.3, pf: 0.35 + (env.mineral === 'high' ? 0.3 : 0), shared: 0 },
+    gpr:     { name: 'GPR (subsurface contrast)', cost: 3, mu: [0, 1.0, 1.7, 2.0, 2.0], pb: 0.4, pf: env.moisture === 'wet' ? 0.9 : env.moisture === 'moist' ? 0.55 : 0.4, shared: 0 },
+    xray:    { name: 'X-ray-like shape score (robot)', cost: 7, mu: [0, 0.2, 0.1, 3.0, 3.0], pb: 0.25, pf: 0.3, shared: 0 }
+  };
+  var KEYS = Object.keys(S);
+  // ground truth
+  var cells = [];
+  for (var j = 0; j < NY; j++) for (var i = 0; i < NX; i++) {
+    var u = R.next(), c = 0, acc = 0;
+    for (var k = 0; k < prior.length; k++) { acc += prior[k]; if (u <= acc) { c = k; break; } c = k; }
+    var bias = {}; KEYS.forEach(function (key) { bias[key] = R.normal(0, S[key].pb); });
+    cells.push({ i: i, j: j, cls: c, bias: bias, latent: R.normal(0, 1), reads: [], mark: null, p: null, tex: R.uniform(0, 1) });
+  }
+  // guarantee at least 2 hazards
+  var nh = cells.filter(function (c) { return HAZ[c.cls]; }).length;
+  while (nh < 2) { var cc = cells[R.int(0, cells.length - 1)]; if (!HAZ[cc.cls]) { cc.cls = R.pick([3, 4]); nh++; } }
+  var budget = L.budget, spent = 0, sel = cells[0], log = [];
+
+  function measure(key) {
+    var s = S[key]; if (spent + s.cost > budget) return;
+    var shared = s.shared ? s.shared * sel.latent * (HAZ[sel.cls] ? 1 : 0.5) : 0;
+    var v = s.mu[sel.cls] + sel.bias[key] + shared + R.normal(0, s.pf);
+    sel.reads.push({ key: key, v: v }); spent += s.cost; log.push({ cell: sel, key: key });
+    render();
+  }
+
+  // ---------------------------------------------------------------- inference
+  function naivePosterior(c) {
+    var lp = prior.map(Math.log);
+    c.reads.forEach(function (r) {
+      var s = S[r.key], sd = Math.sqrt(s.pb * s.pb + s.pf * s.pf + s.shared * s.shared * 0.625);
+      for (var k = 0; k < CLASSES.length; k++) lp[k] += -0.5 * Math.pow((r.v - s.mu[k]) / sd, 2) - Math.log(sd);
+    });
+    return norm(lp);
+  }
+  // exact model: joint Gaussian over the cell's readings with persistent + shared + fresh components
+  function exactPosterior(c) {
+    var n = c.reads.length; if (!n) return prior.slice();
+    var lp = prior.map(Math.log);
+    for (var k = 0; k < CLASSES.length; k++) {
+      var lat = HAZ[k] ? 1 : 0.5, Sg = [];
+      for (var a = 0; a < n; a++) { Sg.push([]); for (var b = 0; b < n; b++) {
+        var ra = c.reads[a], rb = c.reads[b], sa = S[ra.key], sb = S[rb.key], v = 0;
+        if (ra.key === rb.key) v += sa.pb * sa.pb;
+        v += sa.shared * sb.shared * lat * lat;
+        if (a === b) v += sa.pf * sa.pf;
+        Sg[a].push(v);
+      } }
+      var r = c.reads.map(function (x) { return x.v - S[x.key].mu[k]; });
+      lp[k] += gaussLogPdf(r, Sg);
+    }
+    return norm(lp);
+  }
+  function gaussLogPdf(r, Sg) { // Cholesky
+    var n = r.length, Lc = [];
+    for (var i = 0; i < n; i++) { Lc.push(new Array(n).fill(0)); for (var j = 0; j <= i; j++) {
+      var s = Sg[i][j]; for (var k = 0; k < j; k++) s -= Lc[i][k] * Lc[j][k];
+      Lc[i][j] = i === j ? Math.sqrt(Math.max(s, 1e-12)) : s / Lc[j][j];
+    } }
+    var y = [], ld = 0;
+    for (var i2 = 0; i2 < n; i2++) { var t = r[i2]; for (var k2 = 0; k2 < i2; k2++) t -= Lc[i2][k2] * y[k2]; y.push(t / Lc[i2][i2]); ld += Math.log(Lc[i2][i2]); }
+    return -0.5 * y.reduce(function (a, b) { return a + b * b; }, 0) - ld;
+  }
+  function norm(lp) { var m = Math.max.apply(null, lp), e = lp.map(function (x) { return Math.exp(x - m); }), z = e.reduce(function (a, b) { return a + b; }, 0); return e.map(function (x) { return x / z; }); }
+  function pHaz(p) { return p[3] + p[4]; }
+  function entropy(p) { return -p.reduce(function (a, x) { return a + (x > 0 ? x * Math.log2(x) : 0); }, 0); }
+  // expected entropy reduction of P(hazard) (binary) for one more reading of sensor key, via Monte Carlo under the naive model
+  function voi(c, key) {
+    var p = naivePosterior(c), h0 = bin(pHaz(p)), s = S[key], sd = Math.sqrt(s.pb * s.pb + s.pf * s.pf + s.shared * s.shared * 0.625), rr = EOD.rng(7), acc = 0, N = 150;
+    for (var n = 0; n < N; n++) {
+      var u = rr.next(), k = 0, a = 0; for (; k < 5; k++) { a += p[k]; if (u <= a) break; } k = Math.min(k, 4);
+      var v = s.mu[k] + rr.normal(0, sd);
+      var fake = { reads: c.reads.concat([{ key: key, v: v }]) };
+      acc += bin(pHaz(naivePosterior(fake)));
+    }
+    return h0 - acc / N;
+  }
+  function bin(q) { q = U.clamp(q, 1e-9, 1 - 1e-9); return -(q * Math.log2(q) + (1 - q) * Math.log2(1 - q)); }
+
+  // ---------------------------------------------------------------- UI
+  var showAuto = level === 'Beginner' || level === 'Intermediate';
+  var showVoi = level !== 'Expert';
+  U.$('#brief').innerHTML = 'Clear a ' + NX + '×' + NY + ' fictional survey field. Hazard objects (<b>hazard-M</b> metal-rich, <b>hazard-L</b> low-metal) are hidden among clutter and rocks. ' +
+    'Budget: <b>' + budget + '</b> time units. Declare every cell <b>hazard</b>, <b>clear</b> or <b>needs more data</b> and give your P(hazard). ' +
+    'A missed hazard declared clear is the worst outcome; honest uncertainty is rewarded.';
+  U.$('#env').innerHTML = [['local time', env.hour + ':00  (thermal gain ' + thermalGain.toFixed(2) + ')'], ['soil moisture', env.moisture], ['soil mineralisation', env.mineral], ['prior P(hazard)/cell', U.fmt(L.pH, 3)]]
+    .map(function (r) { return '<span class="k">' + r[0] + '</span><span>' + r[1] + '</span>'; }).join('');
+  KEYS.forEach(function (key) {
+    var b = U.el('button', null, '<span>' + S[key].name + '</span><span class="mono">' + S[key].cost + ' u</span>');
+    b.onclick = function () { measure(key); }; b.dataset.key = key; U.$('#sensors').appendChild(b);
+  });
+  function specSheet() {
+    var h = '<table class="spec"><tr><th>sensor</th>' + CLASSES.map(function (c) { return '<th>' + c.replace('metal ', 'm.').replace('hazard-', 'h-') + '</th>'; }).join('') + '<th>σ</th></tr>';
+    KEYS.forEach(function (k) {
+      var s = S[k], sd = Math.sqrt(s.pb * s.pb + s.pf * s.pf + s.shared * s.shared * 0.625);
+      h += '<tr><td>' + k + '</td>' + (level === 'Expert' ? '<td colspan="5" style="text-align:center">(characterise from data)</td>' : s.mu.map(function (m) { return '<td>' + m.toFixed(2) + '</td>'; }).join('')) + '<td>' + sd.toFixed(2) + '</td></tr>';
+    });
+    h += '</table><div class="hint">Mean response per class and total per-reading σ. ' + (level === 'Beginner' ? 'Note: σ includes a <b>persistent</b> per-cell part — repeating the same sensor on the same cell averages out only the fresh part. Camera and thermal share a surface-disturbance component.' : 'Read the fine print in lesson 05.6.') + '</div>';
+    U.$('#spec').innerHTML = h;
+  }
+  specSheet();
+
+  var cv = U.$('#grid');
+  cv.addEventListener('click', function (e) {
+    var r = cv.getBoundingClientRect(), i = Math.floor((e.clientX - r.left) / r.width * NX), j = Math.floor((e.clientY - r.top) / r.height * NY);
+    sel = cells[j * NX + i]; U.$('#pslider').value = sel.p === null ? 0.5 : sel.p; render();
+  });
+  U.$('#pslider').oninput = function () { sel.p = +this.value; render(); };
+  function mark(m) { sel.mark = m; if (sel.p === null) sel.p = m === 'hazard' ? 0.9 : m === 'clear' ? 0.05 : 0.5; U.$('#pslider').value = sel.p; render(); }
+  U.$('#mH').onclick = function () { mark('hazard'); };
+  U.$('#mC').onclick = function () { mark('clear'); };
+  U.$('#mU').onclick = function () { mark('unknown'); };
+
+  function render() {
+    var g = EOD.hidpi(cv, Math.round((cv.clientWidth || 600) * NY / NX)), ctx = g.ctx, cw = g.w / NX, ch = g.h / NY;
+    cells.forEach(function (c) {
+      var x = c.i * cw, y = c.j * ch;
+      var base = 22 + Math.round(c.tex * 10);
+      ctx.fillStyle = 'rgb(' + (base + 8) + ',' + (base + 10) + ',' + (base + 4) + ')'; ctx.fillRect(x, y, cw, ch);
+      if (showAuto && c.reads.length) { var ph = pHaz(naivePosterior(c)); ctx.fillStyle = 'rgba(248,113,113,' + (0.08 + 0.7 * ph) + ')'; ctx.fillRect(x, y, cw, ch); }
+      ctx.strokeStyle = '#1c2633'; ctx.strokeRect(x + 0.5, y + 0.5, cw - 1, ch - 1);
+      if (c.reads.length) { ctx.fillStyle = '#9fb0c6'; ctx.font = '10px monospace'; ctx.fillText(c.reads.length + 'r', x + 4, y + 12); }
+      if (c.mark) {
+        ctx.fillStyle = c.mark === 'hazard' ? '#f87171' : c.mark === 'clear' ? '#4ade80' : '#facc15';
+        if (c.mark === 'unknown') { ctx.font = 'bold 18px sans-serif'; ctx.fillText('?', x + cw - 16, y + ch - 8); }
+        else ctx.fillRect(x + cw - 14, y + ch - 14, 10, 10);
+      }
+      if (c === sel) { ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 2; ctx.strokeRect(x + 2, y + 2, cw - 4, ch - 4); ctx.lineWidth = 1; }
+    });
+    U.$('#cellId').textContent = String.fromCharCode(65 + sel.j) + (sel.i + 1);
+    U.$('#readings').innerHTML = sel.reads.length ? sel.reads.map(function (r, n) { return '<div><span class="t">#' + (n + 1) + '</span>' + S[r.key].name + ': <b>' + r.v.toFixed(2) + '</b></div>'; }).join('') : '<div class="hint">no readings yet</div>';
+    var p = naivePosterior(sel);
+    U.$('#post').innerHTML = showAuto ? CLASSES.map(function (c, k) {
+      return '<div class="pbar"><span>' + c + '</span><div class="b"><div style="width:' + (100 * p[k]).toFixed(1) + '%;background:' + COLORS[k] + '"></div></div><span>' + p[k].toFixed(3) + '</span></div>';
+    }).join('') + '<div class="pbar"><span><b>P(hazard)</b></span><div class="b"><div style="width:' + (100 * pHaz(p)).toFixed(1) + '%;background:#f87171"></div></div><span>' + pHaz(p).toFixed(3) + '</span></div>'
+      : '<div class="hint">Hidden at ' + level + ': do the fusion yourself (lesson 05.6). The spec sheet has what you need.</div>';
+    U.$('#voi').innerHTML = showVoi ? 'Expected information gain on P(hazard) for one more reading [bits]: ' + KEYS.map(function (k) { return k + ' ' + voi(sel, k).toFixed(3) + ' (' + (voi(sel, k) / S[k].cost).toFixed(3) + '/u)'; }).join(' · ') : '';
+    U.$('#pv').textContent = sel.p === null ? '—' : sel.p.toFixed(2);
+    var marked = cells.filter(function (c) { return c.mark; }).length;
+    U.$('#status').innerHTML = [['budget used', spent + ' / ' + budget], ['cells declared', marked + ' / ' + cells.length], ['readings', log.length]]
+      .map(function (r) { return '<span class="k">' + r[0] + '</span><span>' + r[1] + '</span>'; }).join('');
+    document.querySelectorAll('#sensors button').forEach(function (b) { b.disabled = spent + S[b.dataset.key].cost > budget; });
+  }
+
+  // ---------------------------------------------------------------- debrief
+  U.$('#finish').onclick = function () {
+    var haz = cells.filter(function (c) { return HAZ[c.cls]; });
+    var missed = haz.filter(function (c) { return c.mark === 'clear'; }), undeclared = haz.filter(function (c) { return !c.mark; });
+    var found = haz.filter(function (c) { return c.mark === 'hazard'; }), flagged = haz.filter(function (c) { return c.mark === 'unknown'; });
+    var falseH = cells.filter(function (c) { return !HAZ[c.cls] && c.mark === 'hazard'; });
+    var unmarked = cells.filter(function (c) { return !c.mark; }).length;
+    // safety: hazards not declared clear; unmarked hazards count as misses (the field was released)
+    var safety = 100 * (found.length + 0.7 * flagged.length) / haz.length - 40 * missed.length - 25 * undeclared.length;
+    // information quality: Brier score of user P(hazard); cells without a user P use the prior
+    var brier = cells.reduce(function (a, c) { var q = c.p === null ? L.pH : c.p; return a + Math.pow(q - (HAZ[c.cls] ? 1 : 0), 2); }, 0) / cells.length;
+    var brierPrior = L.pH * (1 - L.pH);
+    var info = 100 * U.clamp(1 - brier / Math.max(1e-6, brierPrior), 0, 1);
+    // uncertainty recognition: 'unknown' used where the exact posterior was genuinely ambiguous
+    var amb = cells.filter(function (c) { var q = pHaz(exactPosterior(c)); return q > 0.15 && q < 0.85; });
+    var recog = amb.length ? 100 * amb.filter(function (c) { return c.mark === 'unknown' || c.mark === 'hazard'; }).length / amb.length : 100;
+    var resource = 100 * U.clamp((found.length + flagged.length) / Math.max(1, haz.length) * (1 - 0.3 * spent / budget) + 0.3 * (1 - falseH.length / 10), 0, 1);
+    // naive vs exact overconfidence
+    var over = cells.filter(function (c) { return c.reads.length >= 2; }).map(function (c) { return Math.abs(pHaz(naivePosterior(c)) - pHaz(exactPosterior(c))); });
+    var worst = over.length ? Math.max.apply(null, over) : 0;
+    var repeats = cells.filter(function (c) { var ks = {}; return c.reads.some(function (r) { if (ks[r.key]) return true; ks[r.key] = 1; return false; }); }).length;
+    EOD.debrief.show({ title: 'Sensor-fusion survey', seed: seed, level: level,
+      scores: [{ label: 'Safety', value: U.clamp(safety, 0, 100), note: missed.length + ' hazard(s) declared clear, ' + undeclared.length + ' undeclared' },
+        { label: 'Information quality', value: info, note: 'Brier ' + brier.toFixed(4) + ' vs prior ' + brierPrior.toFixed(4) },
+        { label: 'Recognised unknowns', value: recog, note: amb.length + ' genuinely ambiguous cells' },
+        { label: 'Resource use', value: resource, note: spent + '/' + budget + ' units, ' + falseH.length + ' false hazard calls' }],
+      observed: [log.length + ' readings on ' + cells.filter(function (c) { return c.reads.length; }).length + ' cells; environment ' + env.hour + ':00, ' + env.moisture + ' soil, ' + env.mineral + ' mineralisation.',
+        'Ground truth: ' + haz.length + ' hazards at ' + haz.map(function (c) { return String.fromCharCode(65 + c.j) + (c.i + 1) + ' (' + CLASSES[c.cls] + ')'; }).join(', ') + '.'],
+      decided: [found.length + ' hazards declared, ' + flagged.length + ' flagged as needing data, ' + missed.length + ' declared clear, ' + unmarked + ' cells left undeclared.'],
+      missed: missed.concat(undeclared).map(function (c) {
+        return String.fromCharCode(65 + c.j) + (c.i + 1) + ': ' + CLASSES[c.cls] + ' — ' + (c.reads.length ? 'you took ' + c.reads.length + ' reading(s); exact posterior P(hazard) = ' + pHaz(exactPosterior(c)).toFixed(2) : 'never measured (prior ' + L.pH + ')') +
+          (c.cls === 4 ? '. Low-metal hazards are nearly invisible to EMI — GPR/thermal/X-ray carry the evidence.' : '');
+      }).concat(repeats ? ['You repeated the same sensor on ' + repeats + ' cell(s). Its persistent error component does not average out — the naive posterior was overconfident by up to ' + worst.toFixed(2) + ' in P(hazard).'] : []),
+      uncertainty: ['Each reading = class mean + persistent per-cell error + shared surface-disturbance term (camera & thermal) + fresh noise.',
+        'Thermal gain at ' + env.hour + ':00 was ' + thermalGain.toFixed(2) + ' — ' + (thermalGain < 0.4 ? 'poor diurnal contrast, thermal nearly useless' : 'useful contrast') + '.',
+        env.moisture === 'wet' ? 'Wet soil degraded GPR (high attenuation & clutter).' : 'GPR operated in ' + env.moisture + ' soil.',
+        env.mineral === 'high' ? 'Mineralised soil made rocks ring the metal detector.' : 'Low mineralisation: EMI rock response small.'],
+      reasoning: ['Choose sensors by expected information gain per unit cost, not by habit; different sensors fail for different physical reasons, so diversity beats repetition.',
+        'Correlated sensors (same physics or same disturbance) add less evidence than their individual likelihood ratios suggest.',
+        'In clearance, a field is only released when residual risk is acceptable — "needs more data" is a legitimate professional answer, "clear" without evidence is not.'],
+      physics: ['EMI responds to conductive metal; GPR to dielectric contrast; thermal to diurnal heat-flow differences; the X-ray-like score to density/shape.'],
+      engineering: ['Naive-Bayes fusion is only valid for conditionally independent errors; model shared error sources explicitly (joint Gaussian here).', 'Value-of-information scheduling (greedy info-gain / cost) is a strong baseline for sensor tasking.'],
+      links: [{ href: EOD.COURSE + 'lessons/stage-05/lesson-06', text: '05.6 Sensor fusion' }, { href: EOD.COURSE + 'lessons/stage-05/lesson-01', text: '05.1 Detection theory' },
+        { href: EOD.COURSE + 'lessons/stage-05/lesson-02', text: '05.2 EMI & GPR' }, { href: EOD.COURSE + 'lessons/stage-05/lesson-05', text: '05.5 Thermal & imaging' },
+        { href: EOD.COURSE + 'projects/p03-bayesian-fusion/README', text: 'Project P03 Bayesian fusion' }]
+    });
+    // reveal on the grid
+    showAuto = true; render();
+    var g = EOD.hidpi(cv), ctx = g.ctx, cw = g.w / NX, chh = g.h / NY;
+    cells.forEach(function (c) { if (c.cls) { ctx.strokeStyle = COLORS[c.cls]; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc((c.i + 0.5) * cw, (c.j + 0.5) * chh, Math.min(cw, chh) * 0.28, 0, 2 * Math.PI); ctx.stroke(); } });
+  };
+  window.addEventListener('resize', render);
+  render();
+})();
+</script>
+</body>
+</html>
