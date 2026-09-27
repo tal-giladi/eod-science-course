@@ -27,8 +27,8 @@ full specification.
 
 | Field | Specification |
 |---|---|
-| Prerequisites | [00.1 What EOD is](lessons/stage-00/lesson-01.md) (domains, terminology, life-cycle) · basic probability (Poisson processes) for §7. **Estimated time** 3 h (1.25 h theory · 0.5 h Sim A tutorial · 1.25 h data-model design exercise) |
-| Estimated time | 3 h (1.25 h theory · 0.5 h Sim A tutorial · 1.25 h data-model design exercise) |
+| Prerequisites | [00.1 What EOD is](lessons/stage-00/lesson-01.md) (domains, terminology, life-cycle) · basic probability (Poisson processes) for §7. **Estimated time** 3 h (1.25 h theory · 0.5 h Sim A (Beginner) · 1.25 h data-model design exercise) |
+| Estimated time | 3 h (1.25 h theory · 0.5 h Sim A (Beginner) · 1.25 h data-model design exercise) |
 | Level | Beginner |
 | Learning objectives | 1. Describe a generic EOD command structure and the responsibilities of team members, team leaders,<br>2. Explain the IMAS EOD Level 1 / 2 / 3 / 3+ ladder, US bomb-technician certification (HDS) and<br>3. List NATO AJP-3.18's five EOD capability subsets and the operating domains, and say why some<br>4. Walk a fictional incident through the conceptual life-cycle *call → isolate → assess → act →<br>5. Use Little's law and the Erlang-C model to estimate the team capacity needed for a given call<br>6. Design and test a data model for incident reporting that meets field constraints (offline, |
 | Theory | 1. Command structure and roles · 2. Competence and certification · 3. NATO: capability subsets and domains · 4. The incident life-cycle (conceptual) · 5. Reporting and data · 6. Where technology plugs in · 7. Capacity: how many teams does a squad need? |

@@ -514,12 +514,15 @@ comes from a quick SLAM pass (06.7).
 
 <div class="callout sim">
 
-**Sim G, "obstacle course" and "survey" challenges.** (1) Write an A\* controller in the
-in-browser editor; compare expansions with $h=0$, octile and $2\times$octile. (2) Add a risk
-layer around the marked (fictional) hazard; sweep $w$ and plot path length vs closest approach —
-a Pareto front. (3) Survey challenge: generate boustrophedon lanes for the given sensor width;
-turn on localisation noise and measure coverage gaps. (4) Expert level: obstacles appear during
-execution — compare replan-from-scratch with your incremental planner.
+**Sim G, challenge 4 (cost-map planning), plus offline work.** (1) Write A\* inside
+`plan(grid, start, goal)`; count node expansions yourself and compare $h=0$, octile and
+$2\times$octile, with the energy ratio against the Dijkstra optimum that the challenge reports.
+(2) Treat rubble cells as the (fictional) hazard: add a risk term $w\,f(\text{distance to nearest
+rubble})$ to your planner's cost, sweep $w$, and plot path energy vs closest approach — a Pareto
+front. (3) *Offline Python* (Sim G has no survey challenge): generate boustrophedon lanes for a
+given sensor width over a rectangle, add localisation noise and measure coverage gaps.
+(4) *Offline Python* (Sim G obstacles are static): block cells on your planned path mid-execution
+and compare replan-from-scratch with an incremental planner (D\* Lite).
 
 </div>
 

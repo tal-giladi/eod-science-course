@@ -778,7 +778,7 @@ at midday and at dusk) and 4,000 unlabelled real tiles.
 
 <div class="callout sim">
 
-**Sim H as a generator under test.** (1) Run 30 items and log every visual factor that changes
+**Sim H as a generator under test.** (1) Run 30 items (two or three runs with different seeds and levels) and log every visual factor that changes
 between instances (pose, scale, lighting, background, occlusion, rendering style). (2) Write a
 one-page dataset card for Sim H's output using the table in Section 7, including "known gaps"
 relative to real photographs. (3) Propose two additional randomisation factors and one factor

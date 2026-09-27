@@ -627,11 +627,12 @@ new area: 1 in 2000 regions.
 
 <div class="callout sim">
 
-**Sim J (detection theory).** (1) Set prevalence to 1/200 and move the threshold along the ROC:
-record PPV and false alerts per hour at three operating points. (2) Change the cost ratio
-$C_{\text{FN}}/C_{\text{FP}}$ from 10 to 1000 and observe the optimal operating point. (3) Model a
-two-stage cascade by chaining two operating points; compare the independent-stage prediction with a
-"correlated clutter" setting if available. Relate each result to Sections 8–9.
+**Sim J (detection theory).** (1) Set the prior π to 1/200 and move the threshold along the ROC:
+record PPV and, from the clearance-economics panel, false alarms per hour of investigation time at
+three operating points. (2) Change the cost ratio $C_{\text{miss}}/C_{\text{FA}}$ from 10 to 1000 and
+observe the optimal operating point (*snap to Bayes-optimal*). (3) *Offline Python* (Sim J has no
+cascade): model a two-stage cascade by chaining two operating points read from Sim J; compare the
+independent-stage prediction with correlated clutter (bivariate normal scores with correlation ρ). Relate each result to Sections 8–9.
 
 </div>
 

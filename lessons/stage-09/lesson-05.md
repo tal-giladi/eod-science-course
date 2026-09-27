@@ -520,14 +520,20 @@ for this exercise).
 
 <div class="callout sim">
 
-**Sim G (robotics engineering)** — obstacle course with noisy sensors. (1) Drive the course
-manually while logging the fraction of the map observed versus time. (2) Load or write a
-frontier-following controller and compare coverage-versus-time with your manual run. (3) Add a
-"no-go" region and observe how the planner's path and total time change as you enlarge it.
+**Sim G (robotics engineering)** — challenge 1 (obstacle course, 16-beam lidar). (1) Inside
+`controller(obs, mem)`, dead-reckon your pose from your own `{v, w}` commands, mark the grid cells
+each lidar beam passes through as observed (kept in `mem`), and print the fraction observed versus
+time with `console.log` (browser developer tools). (2) *Offline Python* (Sim G has no exploration
+challenge): implement frontier-following on a grid world and compare coverage-versus-time with a
+random-walk baseline and with your Sim G log. (3) In challenge 4 (cost-map planning), make a
+"no-go" square around a chosen cell impassable inside your `plan()` and observe how the path and
+its energy (vs the unrestricted optimum the score reports) change as you enlarge it.
 
-**Sim A (scene assessment)** — [open](sims/scene-assessment/index.html). Place the robot and sensors
-around a fictional item and ask: which *next* sensing action most reduces uncertainty about the
-scene, and does it respect the cordon and standoff? Compare your choice with the IG ranking.
+**Sim A (scene assessment)** — [open](sims/scene-assessment/index.html). Drive the robot to a
+fictional item and, before each inspection, rank the three robot actions (camera ≤ 4 m, internal
+imaging ≤ 1.5 m, trace ≤ 1 m) by expected information gain per minute and per % battery, using
+detection and false-alarm rates you assume (state them). Does each respect the cordon and
+standoff? Compare your ranking with how much each result actually changed your mark.
 
 </div>
 

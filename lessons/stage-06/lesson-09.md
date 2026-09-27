@@ -260,8 +260,8 @@ gains $40\log_{10}2 = 12$ dB. At 300 m, one relay at 150 m raises the per-hop ma
 relays on one channel, roughly halves throughput per hop. Relays can be placed by people, dropped
 by the robot as "breadcrumbs" (as several SubT teams did), or carried by a second robot or a
 tethered aerial platform. Placement is an optimisation: maximise the minimum per-hop margin
-subject to where a relay can safely be put — itself a planning problem (06.8; Sim G's "keep
-comms" challenge).
+subject to where a relay can safely be put — itself a planning problem (06.8; Sim G's challenge 3,
+"maintain communications").
 
 **Mesh networking** makes relays self-organising; it also makes latency and routing variable,
 which predictive displays must tolerate.
@@ -559,11 +559,16 @@ and a 300 m fibre tether reel.
 
 <div class="callout sim">
 
-**Sim B, comms panel.** (1) Drive into the building model and log RSSI vs position; identify
-walls from the steps in the trace. (2) Set packet loss to 10 % and vary the watchdog timeout;
-count false stops per simulated hour. (3) Select each loss-of-comms behaviour in turn and drive
-out of range: where does each leave the robot? **Sim G, "keep comms" challenge:** place a relay to
-maximise the minimum hop margin over the course; compare with your link-budget calculation.
+**Sim B, telemetry and loss-of-comms.** (1) Drive round and behind buildings A and B and log
+the link-margin read-out (and its obstruction count) vs position; identify each obstruction from
+the steps in your log. (2) Set extra loss to 10 % in the experiment settings and count the
+loss-of-comms events the debrief reports per simulated minute. Sim B's watchdog is fixed (hold
+after 250 ms, loss-of-comms after 1 s), so vary the timeout *offline in Python*: simulate
+Bernoulli packet loss at 10 Hz and plot false stops per hour against timeout. (3) Select each
+loss-of-comms behaviour in turn and drive out of range: where does each leave the robot?
+**Sim G, challenge 3 (maintain communications):** place relays so every route point has a working
+chain (46 − 20 log₁₀ d − 22 · buildings ≥ 6 dB per hop); compute the minimum hop margin of your
+placement and compare with your link-budget calculation.
 
 </div>
 

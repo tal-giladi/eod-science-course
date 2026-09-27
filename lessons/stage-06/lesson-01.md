@@ -432,9 +432,11 @@ access inside buildings. The team has two technicians.
 <div class="callout sim">
 
 **Sim B, orientation mission.** (1) Drive to the target area using only the drive camera, then
-repeat using the map view. Log time and collisions. (2) Deploy the arm to its full reach and watch
-the battery drain rate compared with driving. Which subsystem dominates energy in your mission?
-(3) Induce a comms loss and note the robot's default behaviour. Is it the behaviour you would
+repeat using the map view. Log time and collisions. (2) Parked, move the arm continuously (I/K, J/L)
+to its full reach and back for one minute, and compare the battery drain rate with one minute of
+driving (in this model the arm draws power only while its joints move). Which subsystem dominates
+energy in your mission? (3) Induce a comms loss by driving behind buildings until the link margin
+goes negative, and note the robot's default loss-of-comms behaviour (the selector's default). Is it the behaviour you would
 specify? Write one requirement sentence for it.
 
 </div>

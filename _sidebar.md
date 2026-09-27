@@ -97,8 +97,17 @@
 
 - **Programming projects**
   - [All projects](projects/index.md)
+  - [P01 · Blast-wave library and shock-tube solver (`blastwave`)](projects/p01-blast-wave/README.md)
+  - [P02 · Sensor-noise simulator (`sensornoise`)](projects/p02-sensor-noise/README.md)
+  - [P03 · Bayesian sensor fusion and information-driven scheduling (`bayesfusion`)](projects/p03-bayesian-fusion/README.md)
+  - [P04 · Robot localisation: EKF and particle filter (`localization`)](projects/p04-localization/README.md)
   - [P05 · 2D robot simulator (`robotsim2d`)](projects/p05-robot-sim/README.md)
+  - [P06 · Path planning: A*, risk cost maps, RRT*, coverage (`planning`)](projects/p06-path-planning/README.md)
   - [P07 · SLAM simulation: occupancy grids, ICP, EKF-SLAM and pose graphs](projects/p07-slam/README.md)
+  - [P08 · Manipulator kinematics: Arm-5 library](projects/p08-manipulator/README.md)
+  - [P10 · Synthetic EOD scene generator](projects/p10-scene-generator/README.md)
+  - [P11 · Teleoperation simulator and experiment harness](projects/p11-teleoperation/README.md)
+  - [P12 · Human-in-the-loop decision system](projects/p12-hitl-decision/README.md)
 
 - **Case studies**
   - [All case studies](case-studies/index.md)

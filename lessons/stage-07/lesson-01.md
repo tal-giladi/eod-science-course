@@ -590,17 +590,19 @@ full-response disruption).
 
 <div class="callout sim">
 
-**Sim F — Incident Command.** Play the *Intermediate* scenario twice. Run 1: decide as you
-naturally would. Run 2: before each information request, write down your belief as a
-probability and the likelihood ratio you expect the request to deliver; request only when you
-can articulate a decision it could change. Compare debrief scores for *information gathering*,
-*escalation timing* and *uncertainty handling*. Observe: which requests had zero value because
-no outcome could cross your threshold?
+**Sim F — Incident Command.** Play the same *Intermediate* scenario twice (keep `?seed=` in the
+URL). Run 1: decide as you naturally would. Run 2: before each information request, set the belief
+sliders, write down your belief as a probability and the likelihood ratio you expect the request
+to deliver; request only when you can articulate a decision it could change. Compare the debrief
+scores for *information quality*, *uncertainty reduction* and *recognition of unknowns*, and note
+from the feed timestamps when you escalated. Observe: which requests had zero value because no
+outcome could cross your threshold?
 
-**Sim A — Scene Assessment.** At *Advanced*, complete a scene twice: once with manual approach
-disabled (remote means only), once allowing it. Record the debrief's exposure metric
-(person-minutes weighted by distance) and compare with Section 5. Which cordon line placement
-made the remote option dominant?
+**Sim A — Scene Assessment.** At *Advanced*, complete the same scene (same `?seed=`) twice: once
+using remote means only (never press "Send a person to look"), once allowing it. Record the
+debrief's *Avoiding exposure* score and the "people sent forward" count, and compute person-minutes
+weighted by distance yourself (each approach takes 3 min at the item) to compare with Section 5.
+Which cordon radius made the remote option dominant?
 
 </div>
 

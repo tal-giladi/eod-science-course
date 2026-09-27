@@ -44,7 +44,8 @@ def test_temperature_fit_on_underconfident_logits():
 def test_conformal_threshold_hand_case():
     assert mod.conformal_threshold(np.arange(10) / 10, 0.2) == pytest.approx(0.8)   # k = ceil(8.8) = 9
     # exact integer (n+1)(1-alpha) must not be rounded up by floating-point error
-    assert mod.conformal_threshold(np.arange(19) / 19, 0.05) == pytest.approx(18 / 19)
+    # (24 + 1) * (1 - 0.44) evaluates to 14.000000000000002: k must be 14, not 15
+    assert mod.conformal_threshold(np.arange(24) / 24, 0.44) == pytest.approx(13 / 24)
     assert mod.min_calibration_size(0.01) == 99 and mod.min_calibration_size(0.05) == 19
     with pytest.warns(RuntimeWarning):
         assert mod.conformal_threshold(np.arange(23) / 23, 0.01) == math.inf

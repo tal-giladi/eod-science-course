@@ -488,12 +488,16 @@ the camera gives range (σ = 10 cm) and bearing (σ = 2°) to each visible marke
 
 <div class="callout sim">
 
-**Sim B, map panel.** (1) Drive with *odometry only* on the "gravel" surface; watch the pose
-uncertainty ellipse and compare with the true pose revealed in the debrief. (2) Enable the gyro:
-how does the heading error change during turns? (3) Enable landmark updates and drive past the
-markers: note how the ellipse shrinks *along* the direction the bearing constrains. **Sim G**:
-write your own EKF in the in-browser controller editor and log NIS; deliberately set $R$ too small
-and watch the NIS alarm.
+**Sim B, map panel.** (1) Drive a long loop kept away from the landmark poles (odometry only);
+watch the uncertainty circle and pose σ grow, and compare with the estimated-vs-true position error
+the debrief reports. (2) *Offline Python* (Sim B has no gyro option): add a gyro to your
+dead-reckoning model and compare the heading error during turns with and without it. (3) Drive
+past the poles: note how fast σ shrinks. Sim B draws an isotropic circle, so sketch by hand the
+ellipse a single range–bearing update would leave and the direction along which it shrinks.
+**Sim G, challenge 6 (noisy localisation)**: write your own EKF inside `controller(obs, mem)` from
+`obs.odo` and `obs.marks`; compute NIS for each landmark update yourself (keep it in `mem`, print it
+with `console.log` in the browser's developer tools), deliberately set $R$ too small, and watch
+your NIS exceed its χ² bound and the stop-within-0.5 m success rate drop.
 
 </div>
 

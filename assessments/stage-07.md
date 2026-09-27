@@ -120,10 +120,12 @@ outcome is what happens most of the time even with poor decisions (07.1 §3).
 
 ## Simulator target
 
-- **Sim F · Incident Command** — complete the *Expert* scenario at "proficient" band or better on
-  information gathering, escalation and uncertainty handling.
-- **Sim A · Scene Assessment** — complete an *Expert* scene with an exposure score in the
-  proficient band and all secondary hazards identified.
+- **Sim F · Incident Command** — complete an *Expert* scenario at "Proficient" band or better
+  (≥ 70) on *information quality*, *uncertainty reduction* and *recognition of unknowns*, with the
+  escalation trigger you wrote down beforehand recorded in your log.
+- **Sim A · Scene Assessment** — complete an *Expert* scene with the *Avoiding exposure* score in
+  the Proficient band (in practice: no person sent forward) and the control point searched, so
+  that any secondary item is found.
 
 Record both debriefs; for each, write three sentences: what you would decide differently, which
 information action had the highest value, and which trigger you set that fired (or should have).

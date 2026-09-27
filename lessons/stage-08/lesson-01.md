@@ -458,11 +458,15 @@ A fictional explosion in an open-air car park. The scene is declared safe for se
 <div class="callout sim">
 
 **Sim E — Post-Blast Investigation** ([open full-screen](sims/post-blast/index.html)). In this
-lesson use only its *scene* and *evidence log* modes: (1) set the perimeter, then observe how
-many items fall outside it in the debrief; (2) choose a search pattern and spacing for each zone
-within the effort budget — compare the debrief's per-zone POD with your Koopman prediction;
-(3) run a full collection and check that every item has an unbroken custody record. The
-reconstruction mode is used in 08.2.
+lesson use its scene-safety, search and evidence-log tools: (1) press *scene-safety assessment*
+before you enter, then, from the damage visible in your first few searched cells, decide a scene
+perimeter on paper; after searching, count the fragments you found outside it. (2) Searching
+costs 1 minute per cell against the time budget: plan on paper an inner and an outer zone, a
+pattern (strips or spiral) and the fraction of cells to search in each, and predict with Koopman
+the fraction of fragments you will miss per zone. Drag-search accordingly, then compare the
+fragments you found per zone with your prediction. (3) Photograph, mark and then collect (with a
+description) at least five items, and check in the debrief that every item has an unbroken
+custody record. The seat and yield panel is used in 08.2.
 
 </div>
 
@@ -527,7 +531,7 @@ posterior after unsuccessful search.
   debris); directional throw (a wall shadowing one sector); scheduling searchers under the
   time-varying sweep width of Practical 1.
 
-This feeds the scene mode of [Sim E](sims/post-blast/index.html) and Capstone C3.
+This feeds the search planning you do in [Sim E](sims/post-blast/index.html) and Capstone C3.
 
 ## Reading
 

@@ -138,7 +138,8 @@ coverage will be reported, and who has authority to release the scene.
 
 **Sim E · Post-Blast Investigation** at *Advanced* or higher: reconstruct the seat within the
 scenario's tolerance **with the true seat inside your stated uncertainty region**, keep a custody
-record with no breaks, and request laboratory analyses with the required blanks and controls.
+record with no breaks, and attach written laboratory requests (offline, as in 08.3) for your
+collected items with the required blanks and controls.
 Record the debrief and write three sentences: which evidence constrained the seat most, which
 assumption dominated the yield interval, and what you would document differently.
 

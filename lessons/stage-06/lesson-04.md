@@ -617,12 +617,17 @@ print(stair_len, t_stairs, t_turns, (t_stairs + t_turns) / 3600 * 260)   # 24.0 
 
 <div class="callout sim">
 
-**Sim B, mobility and control.** (1) On gravel and then on concrete, command a fixed track-speed
-difference and measure the turn radius. Estimate $\chi$ for each surface. (2) Drive the stair
-course with the arm stowed, then with the arm raised. Watch the stability indicator and relate it
-to §4. (3) Enable *cold battery* and complete the standard mission. Record where energy goes. (4)
-In the settings panel, switch the drive controller between "P", "PI" and "PI + anti-windup". Push
-against an obstacle, then release, and observe the surge.
+**Sim B, mobility and control** (Sim B has one ground surface, no stairs and a fixed drive
+controller, so tasks 1, 2 and 4 combine sim measurements with offline work). (1) Hold W + A and
+measure the turn radius on the map (5 m grid); back out the sim's effective $\chi$ from the
+commanded track-speed difference. *Offline Python:* predict the radius for the same command with
+this lesson's $\chi$ values for gravel and concrete. (2) Set the arm stowed and then raised and
+read the end-effector reach and height from the arm panel. *Offline paper exercise:* use them to
+shift the centre of mass and compute the §4 tip-over stability margin on a fictional 30° stair
+for both poses. (3) Enable *cold battery* in the experiment settings and complete the standard
+mission. Record where energy goes. (4) *Offline Python:* simulate a track-speed loop with "P",
+"PI" and "PI + anti-windup" controllers and a saturated motor; push against an obstacle (zero
+speed for 3 s), then release, and compare the surge.
 
 </div>
 

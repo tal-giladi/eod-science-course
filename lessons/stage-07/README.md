@@ -52,8 +52,8 @@ dangerous than none.
   a timeline-driven scenario; request information, task sensors and the robot, set isolation,
   escalate or declare insufficient evidence. Scored on reasoning, not speed.
 - **Sim A · Scene Assessment** — [`sims/scene-assessment/`](sims/scene-assessment/index.html):
-  inspect a scene, deploy sensors and a robot, mark hazards and draw cordon and safe zones under
-  limited time and resources.
+  inspect a scene, deploy the robot's sensors, mark hazards, set a cordon and a control point,
+  evacuate or shelter, under limited time and battery.
 
 ## Stage gate
 

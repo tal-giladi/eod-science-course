@@ -615,12 +615,15 @@ box 60 cm away, then inspect it with a close-up camera.
 
 <div class="callout sim">
 
-**Sim B, latency panel.** (1) Set latency to 0, 250, 500 and 1000 ms and drive the robot through
-the doorway course using continuous joystick control; record time and collisions. Plot time vs
-latency — is it linear, and what is the slope? (2) At 1000 ms, enable the predictive overlay and
-repeat. (3) Turn on jitter (±30 %) with the predictive overlay on: how does the ghost behave, and
-why? (4) Switch the arm to waypoint (supervisory) mode and repeat the gripper-positioning task.
-Record your subjective RTLX after each condition.
+**Sim B, experiment settings.** (1) Set round-trip latency to 0, 250, 500 and 1000 ms (apply &
+restart, same seed) and drive a fixed course — from the start, through the gap between buildings
+A and B, round the bus to the reported location — using continuous key control; record time and
+collisions. Plot time vs latency — is it linear, and what is the slope? (2) At 1000 ms, tick
+*predictive display* and repeat. (3) Set jitter to ±30 % with the predictive display on: how does
+the ghost behave, and why? (4) At 1000 ms, do the sensor-puck placement (0.5–1.5 m from the
+object) twice: once with continuous arm keys, once move-and-wait (short taps, stop, wait for the
+video to catch up) as a stand-in for supervisory control. Record your subjective RTLX after each
+condition.
 
 </div>
 

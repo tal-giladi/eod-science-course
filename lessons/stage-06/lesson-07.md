@@ -459,11 +459,16 @@ to the stairs. Duration 6 min.
 
 <div class="callout sim">
 
-**Sim G, "mapping" challenge.** (1) Drive the loop with the SLAM overlay off and observe the
-wall doubling from odometry drift. (2) Turn on scan matching: which corridor segments show
-degeneracy (the sim draws the along-corridor uncertainty)? (3) Enable loop closure and watch the
-map snap. (4) Toggle "false closure" in the Expert level: compare least-squares and robust-kernel
-back-ends. Record map error vs ground truth from the debrief.
+**SLAM — offline Python exercise, with Sim G as the known-map baseline.** Sim G has no mapping
+challenge; its challenge 6 (localisation against a *known* map) is the baseline SLAM removes.
+(1) *Python:* simulate a robot driving a rectangular corridor loop with biased odometry and a
+2D range scanner; plot the scans in the odometry frame and observe the wall doubling from drift.
+(2) *Python:* add ICP scan matching between consecutive scans; use the eigenvalues of its
+Hessian to find which corridor segments are degenerate along the corridor axis. (3) *Python:* build
+a pose graph, add one loop-closure constraint and solve with Gauss–Newton — watch the map snap.
+(4) *Python:* add a false closure and compare least-squares and robust-kernel (Huber or Cauchy)
+back-ends; record map error vs your ground truth. Then run Sim G challenge 6 and explain why its
+landmark map makes the problem so much easier.
 
 </div>
 

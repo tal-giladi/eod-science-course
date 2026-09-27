@@ -163,7 +163,7 @@ Each must name its test method (radio NLOS range test with a controlled link dro
   course, reach, comms relay placement, energy, fictional-object manipulation, noisy sensors) with
   your own controller for at least the reach and obstacle challenges.
 - **Sim B** (`sims/eod-robot/`): complete the standard mission at Advanced (latency and packet
-  loss on) with **no tip-over, no collisions with the item, and ≥ 20 % battery remaining**. In the
+  loss on) with **no contact with the object, no collisions, and ≥ 20 % battery remaining**. In the
   debrief, explain one decision you would now make differently.
 
 </div>

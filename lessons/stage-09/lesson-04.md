@@ -652,12 +652,17 @@ is a homography fitted at 5 m. Item X is at 2.5 m and is about 0.30 m wide.
 
 <div class="callout sim">
 
-**Sim C (sensor fusion).** (1) Configure two sensors with independent noise and fuse them; then
-introduce correlated error and compare the fused posterior with the independent-fusion formula
-(Exercise 7). (2) Drop one sensor mid-run: does the fused estimate degrade gracefully, and does
-its reported uncertainty grow as it should? (3) Add a biased sensor (a registration offset
-analogue): observe how a confident but biased input drags the fused estimate, and how a
-consistency (innovation) check can flag it.
+**Sim C (sensor fusion).** (1) With a fixed seed and *errors: independent*
+(`?level=Intermediate&seed=8&corr=off`), fuse camera and thermal on several cells; then reload with
+`&corr=on` (correlated errors: camera and thermal share an error term) and compare the fused
+posterior with the independent-fusion formula (Exercise 7). (2) Lose a modality: stop using
+thermal partway through (or set `&hour=23`, where the thermal gain collapses): does the fused
+estimate degrade gracefully, and does the posterior stay appropriately uncertain? (3) In the
+correlated setting each sensor also carries a persistent per-cell bias (a registration-offset
+analogue): repeat one sensor on a cell and watch the naive posterior harden while the debrief's
+exact posterior does not. Design a consistency (innovation) check — the reading's distance from
+the spec-sheet mean of the currently most probable class, in σ units — and apply it by hand to
+flag the biased input.
 
 </div>
 

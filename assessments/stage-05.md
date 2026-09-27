@@ -187,9 +187,10 @@ Write a one-page design that:
 
 <div class="callout sim">
 
-- **Sim J** — in clearance mode, find the cost-minimising operating point for three prevalence and
-  cost settings, each within 2 % of the minimum. Then find the operating point that meets
-  $P_d \ge 0.99$ and report its investigation-hours per hectare.
+- **Sim J** — find the cost-minimising operating point for three prior and cost settings by
+  moving the threshold yourself, each with "E[cost] you / optimal" within 2 %. Then, with the
+  clearance-economics area set to 10 000 m² (1 ha), find the threshold that meets
+  $P_d \ge 0.99$ and report its investigation hours per hectare.
 - **Sim C** — reach the "proficient" band at Advanced difficulty: declare all cells with a
   calibrated posterior, using no more than the sensor budget, and write a debrief explaining one
   case where a sensor's false alarm was correctly overridden.

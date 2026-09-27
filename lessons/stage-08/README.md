@@ -32,9 +32,9 @@ safety, and the decision that a scene is safe to enter, belong to certified prof
 
 | Id | Lesson | Time | Level | Simulators / projects |
 |---|---|---|---|---|
-| 08.1 | [The post-blast scene](lessons/stage-08/lesson-01.md) — scene safety, zoning, search patterns and coverage maths, documentation and measurement uncertainty, evidence collection, packaging and chain of custody, TWGFEX at the scene–lab interface | 6 h | Advanced | Sim E (scene, evidence log) |
+| 08.1 | [The post-blast scene](lessons/stage-08/lesson-01.md) — scene safety, zoning, search patterns and coverage maths, documentation and measurement uncertainty, evidence collection, packaging and chain of custody, TWGFEX at the scene–lab interface | 6 h | Advanced | Sim E (search, evidence log) |
 | 08.2 | [Reconstruction as an inverse problem](lessons/stage-08/lesson-02.md) — seat from direction lines (least squares), yield from damage with uncertainty, Bayesian inversion with MCMC, damage-pattern interpretation, photogrammetry and bundle adjustment, LiDAR, video timeline synchronisation | 7 h | Advanced | Sim E (reconstruction), P10, Capstone C3 |
-| 08.3 | [Laboratory & digital forensics](lessons/stage-08/lesson-03.md) — GC-MS, LC-MS, IC, FTIR, Raman, SEM-EDS principles, orthogonal methods and likelihood ratios, OSAC/ASTM standards, TEDAC, CV evidence triage, error rates and Daubert | 5 h | Advanced | Sim E (laboratory), P09, P10 |
+| 08.3 | [Laboratory & digital forensics](lessons/stage-08/lesson-03.md) — GC-MS, LC-MS, IC, FTIR, Raman, SEM-EDS principles, orthogonal methods and likelihood ratios, OSAC/ASTM standards, TEDAC, CV evidence triage, error rates and Daubert | 5 h | Advanced | Sim E (evidence log) + offline lab exercise, P09, P10 |
 
 **Stage total:** ≈ 18 h.
 
@@ -50,9 +50,10 @@ hazards) · [04.2 Distance, reflection, confinement](lessons/stage-04/lesson-02.
 
 - **Sim E · Post-Blast Investigation** — [`sims/post-blast/`](sims/post-blast/index.html): a
   synthetic scene with fragments, damage marks, displaced objects, "photographs" and a tape tool;
-  place hypotheses of seat location and sequence, keep an evidence log with chain of custody, and
-  request laboratory analyses. The debrief scores calibration and documentation discipline, not
-  only accuracy.
+  assess scene safety, search, keep an evidence log with chain of custody, and state a seat
+  hypothesis with an uncertainty radius and a yield estimate with a ×/÷ factor. The debrief scores
+  calibration and documentation discipline, not only accuracy. (Laboratory analysis is an offline
+  exercise in 08.3.)
 
 ## Stage gate
 

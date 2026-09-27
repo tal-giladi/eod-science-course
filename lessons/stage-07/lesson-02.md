@@ -549,14 +549,18 @@ illustrative abstract fragment count $N=20\,000$ into the upper hemisphere.
 
 <div class="callout sim">
 
-**Sim A — Scene Assessment (Advanced/Expert).** (1) Draw your cordon *before* any sensor use,
-then again after two information actions; record how the radius the debrief recommends changes
-as the yield belief narrows. (2) Place the control point in the most convenient spot, then in a
-less convenient but shielded spot; compare the exposure score. (3) Find the secondary hazard the
-scenario hides.
+**Sim A — Scene Assessment (Advanced/Expert).** (1) Set your cordon radius *before* any sensor use,
+then revise it after two robot inspections; record both radii and the yield belief behind each.
+After finishing, compare them with the hazard distance the debrief reveals (green ring). (2) Replay
+the same seed: place the control point in the most convenient spot, then in a less convenient but
+shielded spot outside the cordon; search it each time and compare the Safety score and search
+result. (3) Find the secondary item the scenario may hide (present in most Advanced/Expert scenes)
+by searching the control point and approach routes before relying on them.
 
-**Sim F — Incident Command.** In the *Expert* scenario, a second report arrives mid-incident.
-Log the trigger you set beforehand, whether it fired, and how your escalation timing compared
+**Sim F — Incident Command.** In the *Expert* scenario, timed reports arrive in the feed while you
+work (for example symptoms reported by mailroom staff, or pressure to reopen at the transport hub
+or venue). Before starting, write down the trigger that would make you escalate (CBRN request,
+specialist request or evacuation). Log whether it fired, and how your escalation timing compared
 with the $q^{*}$ logic of Section 9.
 
 </div>

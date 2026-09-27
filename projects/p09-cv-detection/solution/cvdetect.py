@@ -551,7 +551,7 @@ class ClassicalDetector:
 # =============================================================================================
 
 
-def build_cnn(n_classes: int = 2, width: int = 16):
+def build_cnn(n_classes: int = 2, width: int = 8):
     """A small CNN for 32x32 single-channel patches:
     conv3x3(1->w)-BN-ReLU-maxpool, conv3x3(w->2w)-BN-ReLU-maxpool, conv3x3(2w->4w)-BN-ReLU,
     global average pool, linear(4w -> n_classes). Returns a ``torch.nn.Module`` producing logits."""
@@ -572,13 +572,18 @@ def _to_tensor(X):
 
 
 def train_cnn(X: np.ndarray, y: np.ndarray, epochs: int = 10, batch: int = 64, lr: float = 3e-3,
-              width: int = 16, seed: int = 0, augment: bool = True):
+              width: int = 8, seed: int = 0, augment: bool = True, threads: int | None = 2):
     """Train :func:`build_cnn` with Adam and cross-entropy on per-patch standardised inputs.
 
     Deterministic under ``seed`` (``torch.manual_seed`` and a numpy generator for shuffling).
     Augmentation: random 90-degree rotations and flips (the target has no preferred orientation).
+    ``threads`` caps PyTorch CPU threads while training (small models on many cores are slowed
+    down, not sped up, by thread oversubscription); the previous setting is restored.
     Returns the model in eval mode.
     """
+    old_threads = torch.get_num_threads()
+    if threads:
+        torch.set_num_threads(threads)
     torch.manual_seed(seed)
     rng = np.random.default_rng(seed)
     model = build_cnn(2, width)
@@ -599,6 +604,7 @@ def train_cnn(X: np.ndarray, y: np.ndarray, epochs: int = 10, batch: int = 64, l
             loss = loss_fn(model(xb), yb)
             loss.backward()
             opt.step()
+    torch.set_num_threads(old_threads)
     return model.eval()
 
 
@@ -642,7 +648,7 @@ def evaluate_detector(detector, scenes: list[Scene], iou_thr: float = 0.3) -> di
     return curve
 
 
-def run_benchmark(outdir: str = "p09_out", n_train: int = 3000, n_scenes: int = 100, epochs: int = 12,
+def run_benchmark(outdir: str = "p09_out", n_train: int = 2000, n_scenes: int = 100, epochs: int = 10,
                   seed: int = 0) -> dict:
     """Train both detectors per modality, evaluate FROC on held-out scenes, calibrate the CNN on a
     held-out patch set, and write ``froc.png``, ``reliability.png`` and ``report.md`` (given)."""

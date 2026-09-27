@@ -543,7 +543,8 @@ flowchart LR
 ```
 
 Sim E puts you inside this loop with a synthetic scene: fragments, damage marks, displaced
-objects, "photographs" and a tape tool; you place seat and sequence hypotheses and see how the
+objects, "photographs" and a tape tool; you place a seat hypothesis with an uncertainty radius and
+a yield estimate with a ×/÷ factor, and see how the
 evidence constrains them.
 
 <iframe class="sim-frame" src="sims/post-blast/index.html?embed=1" height="720" loading="lazy"></iframe>
@@ -574,12 +575,16 @@ tied to 5 total-station control points (check-point RMS 8 mm), and 4 public vide
 
 <div class="callout sim">
 
-**Sim E — Post-Blast Investigation, reconstruction mode.** (1) Place a seat hypothesis using only
-the damage marks; record your uncertainty. (2) Add the fragment directions and displaced objects;
-compare your revised seat with the Section 2 least-squares estimate computed from the sim's
-exported measurements. (3) Use the photograph mode to measure one displacement with and without
-the scale bar; quantify the difference. (4) In the debrief, check whether the true seat fell
-inside your stated uncertainty — the score rewards calibration, not just accuracy.
+**Sim E — Post-Blast Investigation, reconstruction panel.** (1) Place a seat hypothesis using only
+the damage marks (seat damage zone, broken vs intact windows); record your uncertainty radius.
+(2) Add the fragment positions and the displaced objects' directions (inspect each one; at
+Beginner/Intermediate the analysis overlay also draws back-projection lines and the fragment
+centroid). Sim E has no data export, so record positions and directions yourself with the tape
+tool and compute the Section 2 least-squares seat offline (Python); compare it with your revised
+hypothesis. (3) Measure one displacement's start and end points three times with the tape tool and
+use the spread as your measurement uncertainty; propagate it into the seat estimate. (4) In the
+debrief, check whether the true seat fell inside your stated radius and the true yield inside
+your ×/÷ factor — the score rewards calibration, not just accuracy.
 
 </div>
 

@@ -83,12 +83,13 @@ the mathematics and engineering are the same whatever the payload.
 
 **Sim B — EOD Robot** (`sims/eod-robot/`): drive a tracked robot, pan–tilt camera, arm and
 gripper; simulated camera with occlusion and noise; battery, latency, packet loss, and a map with a
-pose-uncertainty ellipse. Used in 06.1–06.5 and 06.9.
+pose-uncertainty circle. Used in 06.1, 06.2, 06.4–06.6 and 06.9.
 <a class="sim-link" href="sims/eod-robot/index.html" target="_blank">Open Sim B ↗</a>
 
 **Sim G — Robotics Engineering** (`sims/robotics-engineering/`): challenge set (obstacle course,
 reach, comms/relay placement, energy, manipulation of fictional objects, noisy sensors), with
-in-browser JavaScript controllers. Used in 06.3–06.9.
+in-browser JavaScript controllers. Used in 06.3 and 06.6–06.9 (mapping, survey and dynamic
+re-planning are offline Python exercises).
 <a class="sim-link" href="sims/robotics-engineering/index.html" target="_blank">Open Sim G ↗</a>
 
 </div>

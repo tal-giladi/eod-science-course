@@ -688,11 +688,15 @@ at most 30 % of items.
 
 <div class="callout sim">
 
-**Sim C.** (1) Fuse two sensors that are strongly correlated but configured as independent;
-record the fused posterior on known-benign cases. (2) Treat the fused probability as a
-"classifier output" and estimate by hand how far the posterior log-odds should be shrunk
-(a temperature) to match the empirical frequency of hazards in your runs. (3) Now enable the
-correlation-aware fusion and check whether the shrinkage is still needed. Relate your answer to
+**Sim C.** (1) With *errors: correlated* (the default field setting) at Intermediate, fuse camera
+and thermal — which share a surface-disturbance error — plus repeated readings of one sensor on
+the same cells; the auto-fusion treats them all as independent. After the debrief reveals the
+ground truth, record the fused posterior on cells that were benign. (2) Treat the fused probability
+as a "classifier output" and estimate by hand how far the posterior log-odds should be shrunk
+(a temperature) to match the empirical frequency of hazards in your runs. (3) Sim C has no
+correlation-aware fusion switch; instead use the debrief's comparison of the naive posterior with
+the exact joint posterior, and rerun the same seed with `&corr=off` (independent errors), to check
+whether the shrinkage is still needed. Relate your answer to
 the optimality condition in Section 3.
 
 </div>

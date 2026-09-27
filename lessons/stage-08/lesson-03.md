@@ -505,11 +505,15 @@ Following the 08.2 plaza incident (fictional):
 
 <div class="callout sim">
 
-**Sim E — Post-Blast Investigation, laboratory mode** ([open full-screen](sims/post-blast/index.html)).
-Submit sample requests from your scene log: (1) observe how missing blanks or controls change
-what the lab can report; (2) request a second, orthogonal method and see how the reported
-strength changes; (3) in the debrief, compare your stated confidence with the scenario's
-ground truth — the score rewards calibrated statements over confident ones.
+**Sim E evidence log + offline laboratory exercise** ([open full-screen](sims/post-blast/index.html)).
+Sim E has no laboratory mode, so the lab side is a paper/Python exercise built on your scene log.
+(1) *Sim E:* photograph, mark and collect five items with descriptions; the debrief confirms an
+unbroken custody record. (2) *Paper:* write a laboratory request for each item, naming the blanks
+(e.g. swab and packaging blanks) and controls; for a fictional result set, show what the lab can
+and cannot report when one blank is missing. (3) *Python:* combine two orthogonal methods as
+likelihood ratios and show how the reported strength changes, and how much it is overstated if the
+two methods are in fact dependent. (4) *Sim E debrief:* compare your stated seat radius and yield
+factor with the ground truth — the score rewards calibrated statements over confident ones.
 
 </div>
 

@@ -698,13 +698,18 @@ $\sqrt{1.3238^2+0.45^2} = 1.398$ m. So $1.398\cdot0.00873 = 1.22$ cm.
 
 <div class="callout sim">
 
-**Sim G, reach challenge.** (1) Use the arm-only mode to reach each marked target. Before each
-reach, predict with your `ik_arm5` whether it is reachable and in which branch. (2) Switch on the
-manipulability overlay and drive the tool in a straight line toward full extension. Note where
-motion becomes sluggish and compare with $\sigma_{\min}$. (3) In the lift challenge, find the
-largest fictional test weight the arm can hold at three reaches. Plot your measurements against
-the payload-vs-reach model. (4) Write a JS controller that uses DLS for Cartesian jogging, and
-compare the tracking error at $\lambda = 0.01$ and $0.1$.
+**Sim G, challenge 2 (inverse kinematics).** The challenge arm is a planar 2-link arm
+($l_1 = 1.0$ m, $l_2 = 0.8$ m) — the positioning sub-problem of your `ik_arm5`. (1) Write
+`ik(x, y)` (return `null` when unreachable). Before each run, predict for five of the targets
+whether they are reachable and which elbow branch your code returns; check against the replay.
+(2) *Offline Python* (Sim G has no manipulability overlay): compute $\sigma_{\min}$ of the 2-link
+Jacobian along a straight line from $r = 1.0$ m to full extension $r = 1.8$ m and mark where it
+collapses. In Sim B, drive the arm (I/K, J/L) toward full extension and note where the end-effector
+reach read-out barely changes per key press. (3) *Offline paper exercise* (there is no lift
+challenge): with fictional joint-torque limits, use $\tau = J^\top F$ to compute the largest test
+weight the 2-link arm could hold at three reaches and plot it against the payload-vs-reach model.
+(4) Rewrite `ik(x, y)` as an iterative damped-least-squares solver and compare the score (targets
+within 1 cm, correct unreachable calls) at $\lambda = 0.01$ and $0.1$.
 
 </div>
 

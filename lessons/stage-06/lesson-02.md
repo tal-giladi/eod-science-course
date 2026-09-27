@@ -631,11 +631,14 @@ back-projection.
 
 <div class="callout sim">
 
-**Sim B, pan–tilt drill.** (1) Park the robot and centre the PTU camera on a fictional marker.
-Record pan and tilt, then compute them yourself from the robot pose and the marker position shown
-on the map. Do they agree? (2) Drive past the marker while keeping it centred manually. Note where
-tracking becomes hard and relate it to Exercise 8. (3) Raise the pose-uncertainty setting and
-watch the map ellipse. Predict the resulting pointing error in pixels using $r\,\delta\psi\,f_x$.
+**Sim B, pan–tilt drill.** (1) Park the robot and centre the pan–tilt camera (Q/E, R/F) on a
+landmark pole (yellow square on the map). Record pan and tilt from the camera overlay, then compute
+the pan yourself from the robot pose and the pole position on the map (5 m grid). Do they agree?
+(2) Drive past the pole while keeping it centred manually. Note where tracking becomes hard and
+relate it to Exercise 8. (3) There is no pose-uncertainty setting: instead drive a long loop away
+from the poles (or switch to Advanced, where odometry is noisier) and watch the uncertainty circle
+and the pose σ read-out grow. Take $\delta\psi \approx \sigma/d$ for distance travelled $d$ and
+predict the resulting pointing error in pixels using $r\,\delta\psi\,f_x$.
 
 </div>
 
