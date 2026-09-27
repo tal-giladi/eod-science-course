@@ -841,7 +841,7 @@ sim-to-real transfer on a held-out "real" set.
 - **Output:** images for RGB-like, thermal-like (diurnal model), X-ray-like (Beer–Lambert with
   Poisson noise) and depth channels; labels (boxes, masks, visibility score); per-image $\xi$ log;
   an auto-generated dataset card (Markdown) with the parameter table and fixed factors.
-- **Constraints:** NumPy (+ optional SciPy) only; deterministic given seed; ≥ 100 scenes/s at
+- **Constraints:** NumPy (+ optional SciPy) only; deterministic given seed; ≥ 10 scenes/s (100 scenes/s is an extension) at
   128×128 on a laptop CPU; only fictional geometric objects.
 - **Expected behaviour:** thermal contrast changes sign over the simulated day for shallow
   objects; dual-energy log-ratio constant with thickness for a single material; objects below a
