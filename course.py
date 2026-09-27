@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""course.py — track which lessons of the LLM course you have done and where you struggled.
+"""course.py — track which lessons of the EOD science course you have done and where you struggled.
 
 Standard library only. Reads the lesson list from _sidebar.md (so lessons added later show
 up automatically), reads/writes progress/progress.json, and regenerates PROGRESS.md on every
 change. It never touches course content.
 
-Lesson ids: 00.2 = lessons/module-00/lesson-02.md · 20.1 = the capstone · F.1 = frontier update 1
+Lesson ids: 04.2 = lessons/stage-04/lesson-02.md
 
 Quick reference
   python course.py status                   where am I?
@@ -401,7 +401,7 @@ def render_markdown(p: dict, modules: list[dict], lessons: dict) -> str:
 
 # --------------------------------------------------------------------------- CLI
 def main(argv: list[str] | None = None) -> None:
-    ap = argparse.ArgumentParser(description="LLM course progress tracker", epilog=__doc__,
+    ap = argparse.ArgumentParser(description="EOD course progress tracker", epilog=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
     for name in ("status", "next", "review", "render"):
