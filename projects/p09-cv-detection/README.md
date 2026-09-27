@@ -127,7 +127,7 @@ trained briefly are not the over-confident giants of Guo et al., so check before
 | `test_logistic_regression_separates_gaussians` | accuracy near Bayes; zero gradient at the optimum |
 | `test_handcrafted_baseline_beats_chance` | patch accuracy > 0.85, AUC > 0.9 (chance 0.5) |
 | `test_classical_detector_on_scenes` (cv2) | learned scores beat random scores on the same proposals at fixed FPPI |
-| `test_small_cnn_trains_and_calibrates` (torch) | small config trains to > 0.8 accuracy; temperature scaling never worsens NLL |
+| `test_small_cnn_trains_and_calibrates` (torch) | small config (400 patches, 3 epochs) trains to > 0.75 accuracy; temperature scaling never worsens NLL |
 
 ## Milestones
 

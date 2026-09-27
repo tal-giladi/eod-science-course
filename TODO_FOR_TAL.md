@@ -14,8 +14,8 @@ Repo: https://github.com/tal-giladi/eod-science-course · Pages: https://tal-gil
 6. [x] Stages 6–7 lessons (robotics, decision-making).
 7. [x] Stages 8–9 lessons (forensics, AI/CV) + case studies.
 8. [x] Simulators A–G (sims/).
-9. [ ] Programming projects P01–P12 (+ tests, solutions) and capstones.
-10. [ ] QC: links, maths, code tests, safety sweep, terminology, glossary, Pages.
+9. [x] Programming projects P01–P12 (+ tests, solutions) and capstones.
+10. [x] QC: links, maths, code tests, safety sweep, terminology, glossary, Pages.
 
 ## Log
 - 2026-09-27 — scaffold created; research agents launched.
@@ -32,3 +32,8 @@ Repo: https://github.com/tal-giladi/eod-science-course · Pages: https://tal-gil
   "Simulation work" sections with actual sim features. Remaining: batch 9 finish, batch 10 QC (KaTeX render scan,
   internal+external links, pytest EOD_SOLUTION=1 on all projects, safety sweep, qc-report.md), rebuild nav, push.
 - Tal asked: after the running agents finish, do not start new agents without asking him first (token budget).
+- 2026-09-27 — COMPLETE. 47 lessons, 10 sims, 12 projects (224 tests pass with EOD_SOLUTION=1), 9 case studies,
+  4 capstones, references, QC report (curriculum/qc-report.md). Live: https://tal-giladi.github.io/eod-science-course/
+  Maintenance: `py scripts/build_nav.py` after adding pages; `py scripts/check_links.py [--external]`;
+  `node scripts/check_math.js` (needs katex@0.16.9); `py scripts/fix_math.py`.
+  Follow-ups: update cs09 (SS Richard Montgomery mast removal outcome); spot-check sources marked search-confirmed.
