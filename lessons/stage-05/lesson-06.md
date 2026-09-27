@@ -505,12 +505,18 @@ investigate, not to average.
 
 <div class="callout sim">
 
-**Sim C.** (1) Choose *Intermediate* and fuse MD + GPR on a grid with the *independent* model.
-Note the posteriors in the fragment-strewn region. (2) Switch on *correlated errors* and repeat.
-How many "confident" cells lose their confidence? (3) Enable the VOI panel and follow its
-recommended next sensor for ten steps. Then do ten steps of your own choosing, and compare total
-cost and debrief score. (4) *Expert:* the sim hides the correlation level; estimate it from the
-debrief of three seeded runs.
+**Sim C.** (1) Choose *Intermediate*, set *errors: independent* in the field settings (or
+`?level=Intermediate&seed=21&corr=off`) and fuse EMI + GPR on a dozen cells, including some with
+high EMI readings (likely metal clutter). Note the auto-fusion posteriors. (2) Reload the same
+seed with `&corr=on` (correlated errors) and repeat, this time also taking a second reading from
+the same sensor on a few cells. How far overconfident was the naive auto-fusion posterior,
+according to the debrief (which compares it with the exact joint posterior), and how many of your
+"confident" cells turned out wrong? (3) Follow the sensor with the
+highest information gain per unit cost (the read-out under the posterior) for ten steps. Then do
+ten steps of your own choosing, and compare total cost and debrief score. (4) *Expert:* the
+auto-fusion posterior and the information-gain read-out are hidden. Fuse by hand from the spec
+sheet on three seeded runs and use each debrief's naive-vs-exact comparison to judge whether you
+allowed enough for correlated errors.
 
 </div>
 

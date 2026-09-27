@@ -483,12 +483,15 @@ Picked points (x in m, t in ns): (0.30, 6.45), (0.40, 5.52), (0.50, 5.00), (0.60
 
 <div class="callout sim">
 
-**Sim C (sensor fusion), metal-detector and depth channels.** (1) Query the metal-detector channel
-over a grid containing fictional objects with high and low metal content at several depths; plot
-the reported signal against depth and compare the slope on log–log axes with $-6$. (2) Switch the
-soil to "mineralised" and repeat: how does the false-alarm density change at the threshold that
-kept $P_d\ge0.95$? (3) Query the depth/radar channel on the same cells and note which false alarms
-are *not* shared — the raw material for fusion in 05.6.
+**Sim C (sensor fusion), EMI metal detector and GPR.** (1) *Offline Python exercise* (Sim C has
+no depth axis): plot the dipole-model EMI response $\propto d^{-6}$ for a high- and a low-metal
+fictional object over 0.05–0.5 m on log–log axes, confirm the slope $-6$, add a noise floor and read
+off each object's maximum detection depth. (2) In Sim C (Intermediate), fix the field in the URL,
+e.g. `?level=Intermediate&seed=11&mineral=low`, and take EMI readings on about 20 cells. Using the
+spec sheet, choose the EMI threshold that keeps $P_d\ge0.95$ for hazard-M. Reload with
+`&mineral=high` (same seed, same ground truth) and repeat: how does the false-alarm density at
+that threshold change, and which class causes it? (3) Take GPR readings on the same cells and note
+which EMI false alarms are *not* shared by GPR — the raw material for fusion in 05.6.
 
 </div>
 

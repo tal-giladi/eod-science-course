@@ -104,7 +104,7 @@ def _draw_target(img, rng, cx, cy, modality, xx, yy):
         val = rng.uniform(0.62, 0.75) + 0.03 * bands
     else:
         base = rng.uniform(0.2, 0.8)
-        val = base + rng.uniform(0.12, 0.22) * bands
+        val = base + rng.uniform(0.08, 0.2) * bands
     img[:] = img * (1 - alpha) + val * alpha
     c, s = abs(np.cos(ang)), abs(np.sin(ang))
     return _aabb(cx, cy, length / 2 * c + width / 2 * s, length / 2 * s + width / 2 * c, img.shape[0])

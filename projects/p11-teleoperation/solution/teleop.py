@@ -29,8 +29,10 @@ MODES = ("continuous", "move_and_wait", "predictive")
 
 # ----------------------------------------------------------------------------- helpers (given)
 def wrap_angle(a):
-    """Wrap an angle (or array) to (-pi, pi]."""
-    return (np.asarray(a) + np.pi) % (2 * np.pi) - np.pi if np.ndim(a) else (a + math.pi) % (2 * math.pi) - math.pi
+    """Wrap an angle (or array) to [-pi, pi)."""
+    if np.ndim(a):
+        return (np.asarray(a) + np.pi) % (2 * np.pi) - np.pi
+    return (a + math.pi) % (2 * math.pi) - math.pi
 
 
 def unicycle_step(x: float, y: float, th: float, v: float, w: float, dt: float):

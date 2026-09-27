@@ -10,7 +10,8 @@ are abstract YU. Lessons: [03.1](lessons/stage-03/lesson-01.md) ·
 
 **Simulator target.** [Sim H · Recognition Trainer](sims/recognition-trainer/index.html): score
 **≥ 85 % at Advanced** on both category *and* response-category, with a Brier score on your
-stated confidences below 0.15. Record the seed of your qualifying run.
+stated confidences below 0.15 (the debrief's Calibration score is $100(1-2\,\text{Brier})$, so this
+means Calibration above 70). Record the seed of your qualifying run.
 
 </div>
 

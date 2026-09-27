@@ -601,8 +601,10 @@ of interest are fictional low-conductivity items at shallow depth.
 <div class="callout sim">
 
 **Sim C, thermal and camera sensors.** (1) Query the thermal sensor on the same cells at two
-simulated times of day and note how its likelihood ratio changes. Which cells flip? (2) Find a
-cell where the camera says "disturbed" but the thermal reading is neutral. Does fusing them raise
+simulated times of day: keep the field fixed with the URL (`?level=Intermediate&seed=5&hour=12`,
+then `&hour=6`) and note how the thermal gain in the environment panel, the class means in the
+spec sheet and hence the likelihood ratio change. Which cells flip? (2) Find a cell where the
+camera (surface anomaly) reads high but the thermal reading is near the empty-class mean. Does fusing them raise
 or lower the posterior, and why? (3) Using the sensor costs in the panel, when is a second
 thermal look worth more than one metal-detector reading? Keep your answers; 05.6 formalises them.
 

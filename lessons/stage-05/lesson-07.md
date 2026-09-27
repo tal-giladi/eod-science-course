@@ -510,12 +510,15 @@ only in accredited training, and this course deliberately leaves them out.
 
 <div class="callout sim">
 
-**Sim C, budget mode.** (1) Set a fixed sensing budget and a prior map with a hot spot. Spend the
-budget uniformly, then again following the posterior (always query the currently most probable
-cell). Compare the debrief's detection score and the value left undetected. (2) Relate what you did
-to the water-filling solution: were the probabilities of your searched cells roughly equal at
-the end? (3) After declaring, note how many cells you "released" whose ground truth was hazardous.
-That is your empirical residual risk.
+**Sim C, fixed budget.** Every Sim C run has a fixed sensing budget and a uniform prior. (1) With
+a fixed seed (e.g. `?level=Intermediate&seed=33`), spend the budget uniformly (one cheap reading per
+cell, as far as it goes), then replay the same seed following the posterior (always query the cell
+with the currently highest P(hazard)). Compare the debrief's safety score and the hazards left
+undetected. (2) Relate what you did to the water-filling solution: were the probabilities of your
+searched cells roughly equal at the end? (3) After declaring, note how many cells you "released"
+(declared clear) whose ground truth was hazardous. That is your empirical residual risk.
+(4) *Offline Python:* Sim C cannot set a non-uniform prior, so repeat (1) in Python with a
+hot-spot prior map and your water-filling allocation from this lesson.
 
 </div>
 

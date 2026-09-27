@@ -452,12 +452,15 @@ the contract requires "demonstrated $P_d\ge0.99$".
 
 <div class="callout sim">
 
-**Sim J.** (1) Set $d'=2$ and prevalence 0.5; find the threshold that maximises accuracy and
-verify it is the midpoint. (2) Drop prevalence to 0.001 without moving the threshold — watch PPV
-collapse. (3) Set the miss/false-alarm cost ratio to 1000 and find the minimum-cost point; compare
-its slope on the ROC with $\eta^*$. (4) In clearance mode, find the operating point that meets
-$P_d\ge0.99$ and read off the expected investigation hours per hectare; then raise $d'$ by 0.5 and
-record the saving. Debrief target: reach the cost minimum within 2 %.
+**Sim J.** (1) Set $d'=2$, target σ = 1 (equal variance), prior π = 0.5 (the slider maximum) and
+$C_{miss} = C_{FA} = 1$; with equal costs, minimum expected cost is maximum accuracy. Find that
+threshold by hand, verify it is the midpoint $t = 1$, then check with *snap to Bayes-optimal*.
+(2) Drop π to 0.001 without moving the threshold — watch the PPV read-out collapse. (3) Set
+$C_{miss} = 1000$, $C_{FA} = 1$ and find the minimum-cost point; compare the slope of the iso-cost
+line (the β read-out) on the ROC with $\eta^*$. (4) In the clearance-economics panel, set the area
+to 10 000 m² (1 ha), find the threshold that meets $P_d\ge0.99$ and read off the investigation
+hours; then raise $d'$ by 0.5 and record the saving. Target: get "E[cost] you / optimal" within 2 %
+by moving the threshold yourself before you press *snap*.
 
 </div>
 

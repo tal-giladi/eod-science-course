@@ -431,12 +431,14 @@ call has been received. The national threat level is "substantial".
 <div class="callout sim">
 
 **Sim F (incident command) and Sim J (detection theory)** — preview. In
-[Sim J](sims/detection-theory/index.html) set the base rate to $10^{-4}$ and move the operating
-point along the ROC: record the number of false alarms per true detection at sensitivities 0.8,
-0.9, 0.99. In [Sim F](sims/incident-command/index.html) run a Beginner scenario involving an
-unattended item and note which information requests changed your posterior most. In
-[Sim H](sims/recognition-trainer/index.html) the "suspicious-item" category tests the *unattended
-vs suspicious* distinction from context illustrations.
+[Sim J](sims/detection-theory/index.html) set the prior π to $10^{-4}$ and move the threshold
+along the ROC: at $P_d$ = 0.8, 0.9 and 0.99 record the number of false alarms per true detection,
+$(1-\text{PPV})/\text{PPV}$ from the PPV read-out. In [Sim F](sims/incident-command/index.html) run a
+Beginner scenario involving an unattended item (the scenario is drawn from the seed: change
+`?seed=` until you get the transport-hub bag or the parked vehicle) and note which information
+requests moved the evidence most — compare your belief sliders before and after each. In
+[Sim H](sims/recognition-trainer/index.html) the "suspicious item" category tests the *unattended
+vs suspicious* distinction from the context text.
 
 </div>
 

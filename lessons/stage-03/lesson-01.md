@@ -476,9 +476,10 @@ near the base; no one has touched it since". The city was heavily bombed 80 year
 
 <div class="callout sim">
 
-**Sim H, Beginner → Intermediate.** (1) Run 20 items at Beginner and write down, before each
-reveal, your category *and* a probability. Compute your Brier score afterwards. (2) At
-Intermediate, some illustrations have hidden or degraded features: note how often you treated
+**Sim H, Beginner → Intermediate.** (1) Run 20 items at Beginner (two runs of 10) and write
+down, before each commit, your category *and* a probability (enter it on the confidence slider).
+Compute your Brier score afterwards and compare it with the debrief's calibration line. (2) At
+Intermediate, some illustrations are partly buried, corroded or occluded: note how often you treated
 "not visible" as "absent". (3) Record at least two items where the most probable category and
 the correct *response* category differed, and explain why with the loss argument of §6.
 

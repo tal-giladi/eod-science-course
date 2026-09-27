@@ -1,7 +1,9 @@
 """teleop -- delayed teleoperation experiment harness (Project P11).
 
 STARTER -- implement every function that raises NotImplementedError
-(the helpers that are already implemented are not the learning goal). A simulated operator (noisy proportional controller with a reaction time)
+(the helpers that are already implemented are not the learning goal).
+
+A simulated operator (noisy proportional controller with a reaction time)
 drives a unicycle robot to waypoints through an uplink/downlink channel with delay, jitter and
 packet loss. Three operating modes are compared:
 
@@ -26,8 +28,10 @@ MODES = ('continuous', 'move_and_wait', 'predictive')
 
 
 def wrap_angle(a):
-    """Wrap an angle (or array) to (-pi, pi]."""
-    return (np.asarray(a) + np.pi) % (2 * np.pi) - np.pi if np.ndim(a) else (a + math.pi) % (2 * math.pi) - math.pi
+    """Wrap an angle (or array) to [-pi, pi)."""
+    if np.ndim(a):
+        return (np.asarray(a) + np.pi) % (2 * np.pi) - np.pi
+    return (a + math.pi) % (2 * math.pi) - math.pi
 
 
 def unicycle_step(x: float, y: float, th: float, v: float, w: float, dt: float):

@@ -1,7 +1,9 @@
 """hitl -- human-in-the-loop decision engine for FICTIONAL incidents (Project P12).
 
 STARTER -- implement every function that raises NotImplementedError
-(the helpers that are already implemented are not the learning goal). Pipeline:
+(the helpers that are already implemented are not the learning goal).
+
+Pipeline:
 
     classifier logits --> temperature scaling (calibration) --> calibrated belief b(y | x)
                       --> split conformal prediction sets (marginal or class-conditional)

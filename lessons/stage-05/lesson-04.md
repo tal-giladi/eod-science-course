@@ -435,12 +435,16 @@ one noise-only false alarm per 1000 samples, with a library of 10 compounds × 3
 
 <div class="callout sim">
 
-**Sim C (sensor fusion), trace channel.** (1) Query the trace/vapour channel over the grid and note
-its cost (time) and its detection pattern: does it respond at the object location or downwind of it?
-(2) Toggle wind or temperature (if available) and record how the channel's hit rate changes. (3)
-Identify at least one cell where the trace channel alarms but no other channel does — decide whether
-it is an interferent or contamination, and what additional evidence would resolve it. Keep your notes
-for 05.6.
+**Trace channel — offline Python exercise, then Sim C.** Sim C has no trace/vapour channel, so
+tasks 1–2 are offline. (1) *Python:* model a fictional vapour source with a 2D Gaussian plume on a
+12 × 8 grid of 1 m cells and a detector with a fixed limit of detection; map where it alarms. Does it
+respond at the object location or downwind of it? (2) *Python:* vary wind speed (0.5, 2, 5 m/s) and
+temperature (via this lesson's vapour-pressure relation) and record how the hit rate over the grid
+changes. (3) *Sim C:* the same reasoning applies to any single-channel alarm. Find at least one cell
+where one channel reads high but the others do not (e.g. EMI on a rock in `&mineral=high`, or
+camera and thermal sharing a surface-disturbance error in the correlated setting); decide whether it
+is an interferent-like false alarm, and which next reading (use the information-gain read-out)
+would resolve it. Keep your notes for 05.6.
 
 </div>
 

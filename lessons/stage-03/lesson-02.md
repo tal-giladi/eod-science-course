@@ -430,8 +430,8 @@ flowchart TB
   AND --- F2["SF2 released without env B<br/>(1-β)·p2"]
 ```
 
-Use **Sim H** at Intermediate: many illustrations show items *in context* (in a store, on a
-range, in a field). Pay attention to how context changes the *state* you should assume, not just
+Use **Sim H** at Intermediate: every illustration comes with *context* text (where it was found
+— a depot, near a former firing range, in a field — and by whom). Pay attention to how context changes the *state* you should assume, not just
 the family.
 
 <iframe class="sim-frame" src="sims/recognition-trainer/index.html?embed=1" height="720" loading="lazy"></iframe>
@@ -465,11 +465,12 @@ bent.
 
 <div class="callout sim">
 
-**Sim H, Intermediate.** (1) For 15 items, record family, your category, and "used / unused /
-cannot tell" before revealing. (2) Count how often context (packaging, location, deformation)
-changed your state estimate. (3) At Advanced, identify items where a detached or hidden
-feature (fins, band) would have misled a feature-only classifier, and explain how you avoided
-it.
+**Sim H, Intermediate.** (1) For 15 items (one run of 12 plus three from a second seed),
+record family, your category, and "used / unused / cannot tell" (the sim's fired / unfired /
+unknown state) before committing. (2) Count how often the context text (location, finder,
+scatter, deformation) changed your state estimate. (3) At Advanced, identify items where a
+buried, corroded or occluded feature (fins, band) would have misled a feature-only classifier,
+and explain how you avoided it.
 
 </div>
 

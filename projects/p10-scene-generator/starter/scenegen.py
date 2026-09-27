@@ -1,7 +1,9 @@
 """scenegen -- procedural synthetic EOD-style scenes with multi-sensor renders (Project P10).
 
 STARTER -- implement every function that raises NotImplementedError
-(the helpers that are already implemented are not the learning goal). Only FICTIONAL, generic geometric objects are modelled (boxes, lying
+(the helpers that are already implemented are not the learning goal).
+
+Only FICTIONAL, generic geometric objects are modelled (boxes, lying
 cylinders, flat irregular plates, rocks). Nothing here describes any real ordnance or device;
 materials are fictional ("mu" values in 1/cm are invented), yields are not involved at all.
 

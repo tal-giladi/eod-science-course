@@ -489,12 +489,15 @@ through air.
 
 <div class="callout sim">
 
-**Sim C (sensor fusion), X-ray-like channel.** (1) Query the X-ray-like sensor over the grid and
-note its cost and its noise: how does the reported confidence change when you request a
-"longer exposure" (more photons)? (2) Find a cell where the X-ray-like channel and the metal
-channel disagree; explain the disagreement in terms of what each physically measures. (3) Record
-the X-ray channel's false alarms: are they correlated with the metal detector's? Keep the notes
-for 05.6.
+**Sim C (sensor fusion), X-ray-like channel.** (1) Note the X-ray-like sensor's cost (7 units) and its σ
+in the spec sheet, then take two readings on the same cell and watch the auto-fusion posterior.
+Sim C has no exposure control, so do the photon side on paper: if fresh noise falls as
+$1/\sqrt{N}$ with photon count, how much would a 4× longer exposure help, and why does the
+persistent per-cell error in the *correlated* field setting not shrink with repeats (the debrief
+reports the resulting overconfidence)? (2) Find a cell where the X-ray-like channel and the metal
+channel disagree; explain the disagreement in terms of what each physically measures. (3) After
+the debrief reveals the ground truth, record the X-ray channel's high readings on non-hazard cells:
+do they fall on the same cells as the metal detector's false alarms? Keep the notes for 05.6.
 
 </div>
 
