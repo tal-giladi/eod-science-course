@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sim B · EOD Robot</title>
+<link rel="stylesheet" href="../common/sim.css">
+<style>
+  .layout { grid-template-columns: 1.35fr 1fr 290px; }
+  #cam { background: #000; }
+  .keys { font-family: var(--mono); font-size: 11px; color: var(--muted); line-height: 1.6; }
+  .keys b { color: var(--ink); background: #1a2330; padding: 0 4px; border-radius: 3px; }
+  .task { font-size: 12px; margin: 3px 0; }
+  .task.done { color: var(--green); }
+  .task.fail { color: var(--red); }
+  .bigtag { font-family: var(--mono); font-size: 12px; padding: 2px 8px; border-radius: 3px; border: 1px solid var(--line); }
+  @media (max-width: 1150px) { .layout { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="layout">
+  <div class="panel">
+    <h2>Camera feed <span id="camInfo" class="hint"></span></h2>
+    <canvas id="cam"></canvas>
+    <div class="row">
+      <label>mode</label><select id="camMode"><option value="vis">visible</option><option value="thermal">thermal</option></select>
+      <label><input type="checkbox" id="lights"> lights</label>
+      <button id="snap">📷 capture frame</button>
+      <span class="hint" id="snapInfo"></span>
+    </div>
+    <div class="keys"><b>W</b>/<b>S</b> drive · <b>A</b>/<b>D</b> turn · <b>Q</b>/<b>E</b> pan · <b>R</b>/<b>F</b> tilt · <b>I</b>/<b>K</b> shoulder · <b>J</b>/<b>L</b> elbow · <b>G</b> grip/release · <b>Space</b> all-stop · click the feed first to give it keyboard focus</div>
+  </div>
+  <div class="panel">
+    <h2>Map (telemetry — estimated pose)</h2>
+    <canvas id="map"></canvas>
+    <h2 style="margin-top:8px">Arm (side view)</h2>
+    <canvas id="arm"></canvas>
+  </div>
+  <div class="panel">
+    <h2>Mission</h2>
+    <div id="tasks"></div>
+    <h2 style="margin-top:10px">Telemetry</h2>
+    <div class="kv" id="tele"></div>
+    <h2 style="margin-top:10px">Loss-of-comms behaviour</h2>
+    <select id="lcb"><option value="stop">stop in place (default)</option><option value="retro">retro-traverse to last good link</option><option value="continue">continue last command (!)</option></select>
+    <h2 style="margin-top:10px">Operator log</h2>
+    <div class="log" id="log" style="max-height:160px"></div>
+    <div class="row"><button class="primary" id="end">End mission &amp; debrief</button></div>
+  </div>
+</div>
+<script src="../common/eod.js"></script>
+<script>
+(function () {
+  'use strict';
+  var U = EOD.util, level;
+  var diff = EOD.ui.difficultySelect(function (v) { location.href = location.pathname + '?level=' + v; });
+  level = diff.value;
+  EOD.ui.header('B', 'EOD Robot', 'teleoperation · latency · occlusion · comms · arm · uncertainty', [U.el('span', { class: 'hint' }, 'difficulty'), diff]);
+  var seed = EOD.seedFromUrl(), R = EOD.rng(seed);
+  var logf = EOD.ui.logger(U.$('#log'));
+
+  // ---------------------------------------------------------------- difficulty
+  var LV = {
+    Beginner:     { lat: 80,   jitter: 10,  loss: 0.00, dark: false, noise: 0.03, odo: 0.01, battery: 100, time: 600, puck: false, thermal: false },
+    Intermediate: { lat: 350,  jitter: 60,  loss: 0.02, dark: false, noise: 0.06, odo: 0.02, battery: 70,  time: 480, puck: true,  thermal: true },
+    Advanced:     { lat: 800,  jitter: 150, loss: 0.05, dark: false, noise: 0.10, odo: 0.04, battery: 55,  time: 420, puck: true,  thermal: true },
+    Expert:       { lat: 1400, jitter: 300, loss: 0.08, dark: true,  noise: 0.14, odo: 0.06, battery: 45,  time: 360, puck: true,  thermal: true }
+  }[level];
+
+  // ---------------------------------------------------------------- world (metres)
+  var WW = 60, WH = 40;
+  var boxes = [ // [x, y, w, h, colour, name]
+    [0, -1, 60, 1, '#394556', 'wall'], [0, 40, 60, 1, '#394556', 'wall'], [-1, 0, 1, 40, '#394556', 'wall'], [60, 0, 1, 40, '#394556', 'wall'],
+    [14, 6, 10, 9, '#4b5563', 'building A'], [14, 24, 8, 10, '#4b5563', 'building B'], [34, 14, 9, 4, '#3f5f7a', 'bus'],
+    [30, 28, 6, 3, '#6b4f3a', 'container'], [45, 5, 4, 8, '#4b5563', 'kiosk']
+  ];
+  // target placement: beside the bus / container / kiosk (randomised)
+  var spots = [[38.5, 20.2], [33, 26.4], [50.2, 9], [41, 12.6]];
+  var sp = R.pick(spots);
+  var target = { x: sp[0] + R.uniform(-0.4, 0.4), y: sp[1] + R.uniform(-0.2, 0.2), r: 0.3, yaw: R.uniform(0, 2 * Math.PI), disturbed: false,
+    tag: 'K-' + R.int(10, 99), stripe: R.pick(['orange', 'yellow', 'white']) };
+  // four faces (fictional object): 0 tag · 1 stripe · 2 grille · 3 plain; thermal: a warm patch on face 1 or 2
+  target.warmFace = R.pick([1, 2]);
+  var landmarks = [[10, 20], [28, 4], [28, 36], [52, 22], [44, 34]];
+  var OCU = { x: 4, y: 20 };
+  var obstaclesExtra = [];
+  if (level === 'Advanced' || level === 'Expert') for (var n = 0; n < 6; n++) obstaclesExtra.push([R.uniform(26, 50), R.uniform(3, 36), R.uniform(0.6, 1.5), R.uniform(0.6, 1.5), '#5a4a3a', 'debris']);
+  obstaclesExtra = obstaclesExtra.filter(function (b) { return Math.hypot(b[0] - target.x, b[1] - target.y) > 3; });
+  boxes = boxes.concat(obstaclesExtra);
+
+  // ---------------------------------------------------------------- robot state
+  var rob = { x: 7, y: 20, th: 0, v: 0, w: 0, pan: 0, tilt: 0, q1: 1.2, q2: -2.2, grip: true, puckPlaced: null,
+    battery: LV.battery, est: { x: 7, y: 20, th: 0, P: 0.02 }, collisions: 0, odoDist: 0 };
+  var t0 = performance.now(), simT = 0, lastRx = 0, lastGood = { x: 7, y: 20 }, commsLost = false, lostEvents = 0, lostTime = 0;
+  var uplink = [], history = [], cmd = { v: 0, w: 0 }, applied = { v: 0, w: 0 }, keys = {};
+  var facesSeen = {}, thermalSeen = false, tagRead = false, snaps = [], minDist = 99, returned = false, ended = false;
+
+  // ---------------------------------------------------------------- geometry helpers
+  function segs() {
+    var out = [];
+    boxes.forEach(function (b) { var x = b[0], y = b[1], w = b[2], h = b[3]; out.push([x, y, x + w, y, b], [x + w, y, x + w, y + h, b], [x + w, y + h, x, y + h, b], [x, y + h, x, y, b]); });
+    return out;
+  }
+  var SEGS = segs();
+  function rayHit(ox, oy, dx, dy, maxD) {
+    var best = maxD, hit = null;
+    for (var i = 0; i < SEGS.length; i++) {
+      var s = SEGS[i], ex = s[2] - s[0], ey = s[3] - s[1], den = dx * ey - dy * ex;
+      if (Math.abs(den) < 1e-9) continue;
+      var t = ((s[0] - ox) * ey - (s[1] - oy) * ex) / den, u = ((s[0] - ox) * dy - (s[1] - oy) * dx) / den;
+      if (t > 0 && t < best && u >= 0 && u <= 1) { best = t; hit = s; }
+    }
+    return { d: best, s: hit };
+  }
+  function wallsBetween(ax, ay, bx, by) {
+    var n = 0, dx = bx - ax, dy = by - ay, L = Math.hypot(dx, dy);
+    for (var i = 0; i < boxes.length; i++) { // count boxes the segment passes through (sample)
+      var b = boxes[i], inside = false;
+      for (var k = 1; k < 30; k++) { var px = ax + dx * k / 30, py = ay + dy * k / 30; if (px > b[0] && px < b[0] + b[2] && py > b[1] && py < b[1] + b[3]) { inside = true; break; } }
+      if (inside) n++;
+    }
+    return n;
+  }
+  function collides(x, y) {
+    for (var i = 0; i < boxes.length; i++) { var b = boxes[i]; if (x > b[0] - 0.35 && x < b[0] + b[2] + 0.35 && y > b[1] - 0.35 && y < b[1] + b[3] + 0.35) return b; }
+    return null;
+  }
+  // link quality: free-space-like path loss + per-obstruction loss → packet loss probability
+  function link() {
+    var d = Math.max(1, Math.hypot(rob.x - OCU.x, rob.y - OCU.y)), walls = wallsBetween(OCU.x, OCU.y, rob.x, rob.y);
+    var rssi = -40 - 20 * Math.log10(d) - 14 * walls; // dBm (abstract)
+    var margin = rssi - (-92);
+    var ploss = LV.loss + 1 / (1 + Math.exp(margin / 3));
+    return { d: d, walls: walls, rssi: rssi, margin: margin, ploss: U.clamp(ploss, 0, 1) };
+  }
+
+  // ---------------------------------------------------------------- input
+  var camCv = U.$('#cam');
+  camCv.tabIndex = 0;
+  document.addEventListener('keydown', function (e) { keys[e.key.toLowerCase()] = true; if ([' ', 'w', 'a', 's', 'd'].indexOf(e.key.toLowerCase()) >= 0 && document.activeElement === camCv) e.preventDefault();
+    if (e.key.toLowerCase() === 'g') toggleGrip(); if (e.key === ' ') { keys = {}; logf('ALL-STOP sent'); } });
+  document.addEventListener('keyup', function (e) { keys[e.key.toLowerCase()] = false; });
+  camCv.addEventListener('click', function () { camCv.focus(); });
+
+  function toggleGrip() {
+    var ee = armEE();
+    if (rob.grip && LV.puck && !rob.puckPlaced) {
+      if (ee.z < 0.2) {
+        var gx = rob.x + Math.cos(rob.th) * (0.45 + ee.x), gy = rob.y + Math.sin(rob.th) * (0.45 + ee.x);
+        rob.puckPlaced = { x: gx, y: gy }; rob.grip = false;
+        var dd = Math.hypot(gx - target.x, gy - target.y);
+        if (dd < target.r + 0.1) { target.disturbed = true; logf('<span style="color:var(--red)">Sensor puck placed ON the object — object disturbed</span>'); }
+        else logf('Sensor puck released at ' + dd.toFixed(2) + ' m from object');
+      } else logf('Gripper open command ignored: end effector too high (' + ee.z.toFixed(2) + ' m) — lower the arm');
+    }
+  }
+  function armEE() { var l1 = 0.6, l2 = 0.5; return { x: l1 * Math.cos(rob.q1) + l2 * Math.cos(rob.q1 + rob.q2), z: 0.4 + l1 * Math.sin(rob.q1) + l2 * Math.sin(rob.q1 + rob.q2) }; }
+
+  // ---------------------------------------------------------------- simulation step (20 Hz command, 60 Hz physics)
+  var lastCmdT = 0;
+  function step(dt) {
+    simT += dt;
+    var now = simT * 1000;
+    // operator input → uplink packets
+    if (now - lastCmdT > 50) {
+      lastCmdT = now;
+      var c = { v: (keys.w ? 1 : 0) - (keys.s ? 1 : 0), w: (keys.a ? 1 : 0) - (keys.d ? 1 : 0), pan: (keys.q ? 1 : 0) - (keys.e ? 1 : 0), tilt: (keys.r ? 1 : 0) - (keys.f ? 1 : 0),
+        q1: (keys.i ? 1 : 0) - (keys.k ? 1 : 0), q2: (keys.j ? 1 : 0) - (keys.l ? 1 : 0), t: now };
+      var lk = link();
+      if (!R.bernoulli(lk.ploss)) uplink.push({ c: c, at: now + LV.lat / 2 + R.uniform(0, LV.jitter) });
+    }
+    // deliver packets
+    var got = null;
+    uplink = uplink.filter(function (p) { if (p.at <= now) { got = p.c; return false; } return true; });
+    if (got) { cmd = got; lastRx = now; if (commsLost) { commsLost = false; logf('Link re-established'); } lastGood = { x: rob.x, y: rob.y }; }
+    var sinceRx = now - lastRx;
+    var lcb = U.$('#lcb').value;
+    if (sinceRx > 1000 && !commsLost) { commsLost = true; lostEvents++; logf('<span style="color:var(--yellow)">LOSS OF COMMS — behaviour: ' + lcb + '</span>'); }
+    if (commsLost) lostTime += dt;
+    // watchdog / behaviour
+    var use = cmd;
+    if (sinceRx > 250 && !commsLost) use = { v: 0, w: 0, pan: 0, tilt: 0, q1: 0, q2: 0 }; // short gap: hold
+    if (commsLost) {
+      if (lcb === 'stop') use = { v: 0, w: 0, pan: 0, tilt: 0, q1: 0, q2: 0 };
+      else if (lcb === 'retro') { var ang = Math.atan2(lastGood.y - rob.y, lastGood.x - rob.x), err = Math.atan2(Math.sin(ang - rob.th), Math.cos(ang - rob.th)); var far = Math.hypot(lastGood.y - rob.y, lastGood.x - rob.x) > 0.5; use = { v: far && Math.abs(err) < 0.6 ? 0.6 : 0, w: far ? U.clamp(err * 2, -1, 1) : 0, pan: 0, tilt: 0, q1: 0, q2: 0 }; }
+      else use = cmd;
+    }
+    // dynamics: first-order response of tracks
+    var vmax = 1.1, wmax = 0.9;
+    applied.v += (use.v * vmax - applied.v) * Math.min(1, dt * 4);
+    applied.w += (use.w * wmax - applied.w) * Math.min(1, dt * 5);
+    var nx = rob.x + applied.v * Math.cos(rob.th) * dt, ny = rob.y + applied.v * Math.sin(rob.th) * dt;
+    var hitB = collides(nx, ny);
+    var tdist = Math.hypot(nx - target.x, ny - target.y);
+    if (tdist < target.r + 0.4) { if (!target.disturbed) logf('<span style="color:var(--red)">CONTACT with the object — object disturbed</span>'); target.disturbed = true; applied.v = 0; }
+    else if (hitB) { if (Math.abs(applied.v) > 0.2) { rob.collisions++; logf('Collision with ' + hitB[5]); } applied.v = 0; }
+    else { rob.odoDist += Math.abs(applied.v * dt); rob.x = nx; rob.y = ny; }
+    rob.th += applied.w * dt;
+    rob.pan = U.clamp(rob.pan + (use.pan || 0) * dt * 0.9, -2.6, 2.6);
+    rob.tilt = U.clamp(rob.tilt + (use.tilt || 0) * dt * 0.6, -0.6, 0.4);
+    rob.q1 = U.clamp(rob.q1 + (use.q1 || 0) * dt * 0.5, 0, 2.6);
+    rob.q2 = U.clamp(rob.q2 + (use.q2 || 0) * dt * 0.6, -2.7, 0);
+    minDist = Math.min(minDist, Math.hypot(rob.x - target.x, rob.y - target.y));
+    // battery (percent): idle + drive + arm + lights
+    rob.battery -= dt * (0.02 + 0.09 * Math.abs(applied.v) + 0.05 * Math.abs(applied.w) + ((use.q1 || use.q2) ? 0.05 : 0) + (U.$('#lights').checked ? 0.04 : 0)) * (100 / LV.battery) * 0.6;
+    // odometry-based estimate with noise; covariance grows with distance and turning, landmark sightings shrink it
+    var ov = applied.v * (1 + R.normal(0, LV.odo)), ow = applied.w * (1 + R.normal(0, LV.odo * 1.5)) + R.normal(0, LV.odo * 0.05);
+    rob.est.th += ow * dt; rob.est.x += ov * Math.cos(rob.est.th) * dt; rob.est.y += ov * Math.sin(rob.est.th) * dt;
+    rob.est.P += (Math.abs(applied.v) * LV.odo * 0.8 + Math.abs(applied.w) * LV.odo * 0.6) * dt;
+    landmarks.forEach(function (l) {
+      var d = Math.hypot(l[0] - rob.x, l[1] - rob.y);
+      if (d < 9 && rayHit(rob.x, rob.y, (l[0] - rob.x) / d, (l[1] - rob.y) / d, d).s === null) {
+        var k = 0.02; rob.est.x += k * (rob.x - rob.est.x); rob.est.y += k * (rob.y - rob.est.y); rob.est.th += k * Math.atan2(Math.sin(rob.th - rob.est.th), Math.cos(rob.th - rob.est.th));
+        rob.est.P = Math.max(0.02, rob.est.P * 0.985);
+      }
+    });
+    // telemetry history for delayed downlink
+    history.push({ t: now, x: rob.x, y: rob.y, th: rob.th, pan: rob.pan, tilt: rob.tilt, q1: rob.q1, q2: rob.q2, est: { x: rob.est.x, y: rob.est.y, th: rob.est.th, P: rob.est.P } });
+    while (history.length > 2 && history[1].t < now - LV.lat - LV.jitter - 500) history.shift();
+    if (LV.puck ? rob.puckPlaced : true) { if (Math.hypot(rob.x - OCU.x, rob.y - OCU.y) < 6 && (Object.keys(facesSeen).length >= 2)) returned = true; }
+  }
+  function delayed() { // state as seen at the OCU (downlink latency)
+    var tgt = simT * 1000 - LV.lat / 2 - LV.jitter / 2;
+    for (var i = history.length - 1; i >= 0; i--) if (history[i].t <= tgt) return history[i];
+    return history[0] || { x: rob.x, y: rob.y, th: rob.th, pan: 0, tilt: 0, q1: rob.q1, q2: rob.q2, est: rob.est };
+  }
+
+  // ---------------------------------------------------------------- camera renderer (ray-cast)
+  var COLS = 220, FOV = 1.05, frameNoise = EOD.rng(seed + 1);
+  function renderCam() {
+    var st = delayed(), g = EOD.hidpi(camCv, Math.round((camCv.clientWidth || 640) * 0.56)), ctx = g.ctx, W = g.w, H = g.h;
+    var mode = U.$('#camMode').value, lights = U.$('#lights').checked, dark = LV.dark && !lights && mode === 'vis';
+    var horizon = H / 2 + st.tilt * H * 0.9;
+    // sky / ground
+    ctx.fillStyle = mode === 'thermal' ? '#1b1b2e' : dark ? '#050608' : '#26303b'; ctx.fillRect(0, 0, W, horizon);
+    ctx.fillStyle = mode === 'thermal' ? '#262040' : dark ? '#07080a' : '#2d2a25'; ctx.fillRect(0, horizon, W, H - horizon);
+    var camX = st.x + Math.cos(st.th) * 0.2, camY = st.y + Math.sin(st.th) * 0.2, camA = st.th + st.pan;
+    var zbuf = new Array(COLS), colW = W / COLS;
+    for (var c = 0; c < COLS; c++) {
+      var a = camA + (0.5 - (c + 0.5) / COLS) * FOV, dx = Math.cos(a), dy = Math.sin(a);
+      var hit = rayHit(camX, camY, dx, dy, 60), d = hit.d * Math.cos(a - camA);
+      zbuf[c] = hit.d;
+      if (!hit.s) continue;
+      var h = Math.min(H * 3, H * 1.3 / d * (hit.s[4][5] === 'bus' || hit.s[4][5] === 'container' ? 1.0 : hit.s[4][5] === 'debris' ? 0.4 : 2.2));
+      var base = hit.s[4][4], shade = U.clamp(1.2 - d / 35, 0.15, 1);
+      if (dark) shade *= 0.12; if (lights && mode === 'vis') shade = U.clamp(1.5 - d / 10, 0.1, 1.2);
+      var col = mode === 'thermal' ? thermCol(0.25 + 0.1 * Math.sin(hit.s[0])) : scaleHex(base, shade);
+      ctx.fillStyle = col; ctx.fillRect(c * colW, horizon - h * 0.5 - (hit.s[4][5] === 'debris' ? -h * 0.3 : 0), colW + 1, h * (hit.s[4][5] === 'debris' ? 0.7 : 1));
+    }
+    // sprites: landmarks, target, puck
+    var sprites = landmarks.map(function (l) { return { x: l[0], y: l[1], kind: 'pole' }; }).concat([{ x: target.x, y: target.y, kind: 'target' }]);
+    if (rob.puckPlaced) sprites.push({ x: rob.puckPlaced.x, y: rob.puckPlaced.y, kind: 'puck' });
+    sprites.forEach(function (s) { s.d = Math.hypot(s.x - camX, s.y - camY); });
+    sprites.sort(function (a, b) { return b.d - a.d; });
+    var seenFace = null, targetPx = 0;
+    sprites.forEach(function (s) {
+      var ang = Math.atan2(s.y - camY, s.x - camX) - camA; ang = Math.atan2(Math.sin(ang), Math.cos(ang));
+      if (Math.abs(ang) > FOV / 2 + 0.2) return;
+      var sx = (0.5 - ang / FOV) * W, pd = s.d * Math.cos(ang);
+      if (pd < 0.2) return;
+      var size = s.kind === 'pole' ? 0.15 : s.kind === 'puck' ? 0.18 : 0.6, hgt = s.kind === 'pole' ? 2.5 : s.kind === 'puck' ? 0.12 : 0.45;
+      var pw = W * size / (pd * FOV), ph = H * 1.3 / pd * hgt * 0.9;
+      var col0 = Math.floor((sx - pw / 2) / colW), col1 = Math.floor((sx + pw / 2) / colW);
+      var visible = 0;
+      for (var cc = Math.max(0, col0); cc <= Math.min(COLS - 1, col1); cc++) if (zbuf[cc] > s.d) visible++;
+      if (!visible) return;
+      var y0 = horizon + H * 1.3 / pd * 0.5 * 0.9 - ph; // base on ground
+      var shade = dark ? 0.12 : lights && mode === 'vis' ? U.clamp(1.5 - pd / 10, 0.1, 1.2) : U.clamp(1.2 - pd / 35, 0.2, 1);
+      ctx.save(); ctx.beginPath(); // clip to visible columns
+      for (var c2 = Math.max(0, col0); c2 <= Math.min(COLS - 1, col1); c2++) if (zbuf[c2] > s.d) ctx.rect(c2 * colW, 0, colW + 1, H);
+      ctx.clip();
+      if (s.kind === 'pole') { ctx.fillStyle = mode === 'thermal' ? thermCol(0.35) : scaleHex('#c9b458', shade); ctx.fillRect(sx - pw / 2, y0, pw, ph); }
+      else if (s.kind === 'puck') { ctx.fillStyle = mode === 'thermal' ? thermCol(0.6) : scaleHex('#22d3ee', shade); ctx.fillRect(sx - pw / 2, y0, pw, ph); }
+      else {
+        // which face of the fictional object faces the camera
+        var rel = Math.atan2(camY - target.y, camX - target.x) - target.yaw; rel = (rel % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+        var face = Math.floor(((rel + Math.PI / 4) % (2 * Math.PI)) / (Math.PI / 2));
+        var body = mode === 'thermal' ? thermCol(0.45) : scaleHex('#7b7f86', shade);
+        ctx.fillStyle = body; ctx.fillRect(sx - pw / 2, y0, pw, ph); ctx.strokeStyle = '#000'; ctx.strokeRect(sx - pw / 2, y0, pw, ph);
+        var detail = pw > 40 && !dark;
+        if (mode === 'thermal' && face === target.warmFace) {
+          var gr = ctx.createRadialGradient(sx, y0 + ph * 0.55, 1, sx, y0 + ph * 0.55, pw * 0.4); gr.addColorStop(0, thermCol(0.95)); gr.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = gr; ctx.fillRect(sx - pw / 2, y0, pw, ph);
+          if (pw > 25) { thermalSeen = true; }
+        }
+        if (mode === 'vis' && detail) {
+          if (face === 0) { ctx.fillStyle = scaleHex('#e5e7eb', shade); ctx.fillRect(sx - pw * 0.3, y0 + ph * 0.3, pw * 0.6, ph * 0.3);
+            if (pw > 90) { ctx.fillStyle = '#111'; ctx.font = Math.round(pw * 0.12) + 'px monospace'; ctx.textAlign = 'center'; ctx.fillText(target.tag, sx, y0 + ph * 0.52); ctx.textAlign = 'left'; } }
+          if (face === 1) { ctx.fillStyle = scaleHex(target.stripe === 'orange' ? '#fb923c' : target.stripe === 'yellow' ? '#facc15' : '#f3f4f6', shade); ctx.fillRect(sx - pw / 2, y0 + ph * 0.4, pw, ph * 0.14); }
+          if (face === 2) { ctx.strokeStyle = scaleHex('#222', 1); for (var gI = 0; gI < 6; gI++) { ctx.beginPath(); ctx.moveTo(sx - pw * 0.35, y0 + ph * (0.25 + gI * 0.09)); ctx.lineTo(sx + pw * 0.35, y0 + ph * (0.25 + gI * 0.09)); ctx.stroke(); } }
+        }
+        seenFace = face; targetPx = pw;
+        if (mode === 'vis' && detail && pw > 40) facesSeen[face] = true;
+        if (mode === 'vis' && face === 0 && pw > 90 && !dark) { if (!tagRead) logf('Tag legible on feed'); tagRead = true; }
+      }
+      ctx.restore();
+    });
+    // sensor noise & overlays
+    var noise = LV.noise * (dark ? 3 : 1) * (mode === 'thermal' ? 1.4 : 1);
+    for (var p = 0; p < 1600 * noise * 10; p++) { var v = Math.floor(frameNoise.uniform(0, 255)); ctx.fillStyle = 'rgba(' + v + ',' + v + ',' + v + ',' + (0.15 + noise) + ')'; ctx.fillRect(frameNoise.uniform(0, W), frameNoise.uniform(0, H), 2, 2); }
+    if (mode === 'thermal') { ctx.fillStyle = 'rgba(0,0,0,.15)'; for (var yy = 0; yy < H; yy += 3) ctx.fillRect(0, yy, W, 1); }
+    ctx.strokeStyle = 'rgba(34,211,238,.6)'; ctx.beginPath(); ctx.moveTo(W / 2 - 12, H / 2); ctx.lineTo(W / 2 + 12, H / 2); ctx.moveTo(W / 2, H / 2 - 12); ctx.lineTo(W / 2, H / 2 + 12); ctx.stroke();
+    ctx.fillStyle = '#9fb0c6'; ctx.font = '11px monospace';
+    ctx.fillText('PAN ' + (st.pan * 57.3).toFixed(0) + '°  TILT ' + (st.tilt * 57.3).toFixed(0) + '°  ' + mode.toUpperCase() + (lights ? ' +LIGHTS' : ''), 8, 14);
+    ctx.fillText('VIDEO AGE ~' + Math.round(LV.lat / 2 + LV.jitter / 2) + ' ms', W - 150, 14);
+    if (commsLost) { ctx.fillStyle = 'rgba(248,113,113,.9)'; ctx.font = 'bold 22px monospace'; ctx.fillText('NO LINK', W / 2 - 50, H / 2 - 30); }
+    U.$('#camInfo').textContent = seenFace !== null ? '· object in view, ~' + Math.round(targetPx) + ' px wide' : '';
+    return { face: seenFace, px: targetPx };
+  }
+  function scaleHex(hex, k) { var n = parseInt(hex.slice(1), 16); var r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255; return 'rgb(' + [r, g, b].map(function (v) { return Math.round(U.clamp(v * k, 0, 255)); }).join(',') + ')'; }
+  function thermCol(t) { t = U.clamp(t, 0, 1); var r = Math.round(255 * U.clamp(t * 1.8 - 0.3, 0, 1)), g = Math.round(255 * U.clamp(t * 1.8 - 1, 0, 1)), b = Math.round(255 * U.clamp(0.6 - t, 0, 1) + 60 * t); return 'rgb(' + r + ',' + g + ',' + b + ')'; }
+
+  // ---------------------------------------------------------------- map & arm
+  function renderMap() {
+    var st = delayed(), cv = U.$('#map'), g = EOD.hidpi(cv, Math.round((cv.clientWidth || 400) * WH / WW)), ctx = g.ctx, s = g.w / WW;
+    ctx.fillStyle = '#0b1017'; ctx.fillRect(0, 0, g.w, g.h);
+    ctx.strokeStyle = '#131c28'; for (var x = 0; x <= WW; x += 5) { ctx.beginPath(); ctx.moveTo(x * s, 0); ctx.lineTo(x * s, g.h); ctx.stroke(); } for (var y = 0; y <= WH; y += 5) { ctx.beginPath(); ctx.moveTo(0, y * s); ctx.lineTo(g.w, y * s); ctx.stroke(); }
+    boxes.forEach(function (b) { ctx.fillStyle = b[4]; ctx.fillRect(b[0] * s, b[1] * s, b[2] * s, b[3] * s); });
+    landmarks.forEach(function (l) { ctx.fillStyle = '#c9b458'; ctx.fillRect(l[0] * s - 2, l[1] * s - 2, 4, 4); });
+    // reported object location (from the call): approximate, with an uncertainty circle
+    ctx.strokeStyle = 'rgba(248,113,113,.7)'; ctx.setLineDash([4, 3]); ctx.beginPath(); ctx.arc(target.rx * s, target.ry * s, 3.5 * s, 0, 2 * Math.PI); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = '#f87171'; ctx.font = '10px monospace'; ctx.fillText('reported location', target.rx * s + 3.5 * s + 3, target.ry * s);
+    ctx.fillStyle = '#22d3ee'; ctx.fillRect(OCU.x * s - 4, OCU.y * s - 4, 8, 8); ctx.fillText('OCU', OCU.x * s + 6, OCU.y * s + 3);
+    if (rob.puckPlaced) { ctx.fillStyle = '#22d3ee'; ctx.beginPath(); ctx.arc(rob.puckPlaced.x * s, rob.puckPlaced.y * s, 3, 0, 7); ctx.fill(); }
+    var e = st.est, sd = Math.sqrt(e.P) * 3;
+    ctx.strokeStyle = 'rgba(250,204,21,.8)'; ctx.beginPath(); ctx.arc(e.x * s, e.y * s, Math.max(3, sd * s), 0, 2 * Math.PI); ctx.stroke();
+    ctx.save(); ctx.translate(e.x * s, e.y * s); ctx.rotate(e.th);
+    ctx.fillStyle = '#fb923c'; ctx.fillRect(-0.35 * s, -0.25 * s, 0.7 * s, 0.5 * s);
+    ctx.fillStyle = 'rgba(34,211,238,.12)'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, 12 * s, st.pan - FOV / 2, st.pan + FOV / 2); ctx.closePath(); ctx.fill();
+    ctx.restore();
+    var lk = link();
+    ctx.strokeStyle = lk.margin > 6 ? 'rgba(74,222,128,.35)' : lk.margin > 0 ? 'rgba(250,204,21,.5)' : 'rgba(248,113,113,.6)'; ctx.setLineDash([2, 4]);
+    ctx.beginPath(); ctx.moveTo(OCU.x * s, OCU.y * s); ctx.lineTo(rob.x * s, rob.y * s); ctx.stroke(); ctx.setLineDash([]);
+  }
+  function renderArm() {
+    var st = delayed(), cv = U.$('#arm'), g = EOD.hidpi(cv, 150), ctx = g.ctx, s = 90, ox = 50, oy = g.h - 20;
+    ctx.fillStyle = '#0b1017'; ctx.fillRect(0, 0, g.w, g.h);
+    ctx.strokeStyle = '#333d4a'; ctx.beginPath(); ctx.moveTo(0, oy); ctx.lineTo(g.w, oy); ctx.stroke();
+    ctx.fillStyle = '#fb923c'; ctx.fillRect(ox - 40, oy - 0.3 * s, 80, 0.3 * s);
+    var l1 = 0.6, l2 = 0.5, bx = ox + 30, bz = oy - 0.4 * s;
+    var ex = bx + l1 * Math.cos(st.q1) * s, ez = bz - l1 * Math.sin(st.q1) * s, fx = ex + l2 * Math.cos(st.q1 + st.q2) * s, fz = ez - l2 * Math.sin(st.q1 + st.q2) * s;
+    ctx.strokeStyle = '#d6deea'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(bx, bz); ctx.lineTo(ex, ez); ctx.lineTo(fx, fz); ctx.stroke(); ctx.lineWidth = 1;
+    ctx.fillStyle = rob.grip && !rob.puckPlaced && LV.puck ? '#22d3ee' : '#6b7280'; ctx.beginPath(); ctx.arc(fx, fz, 6, 0, 7); ctx.fill();
+    var ee = { x: l1 * Math.cos(st.q1) + l2 * Math.cos(st.q1 + st.q2), z: 0.4 + l1 * Math.sin(st.q1) + l2 * Math.sin(st.q1 + st.q2) };
+    ctx.fillStyle = '#9fb0c6'; ctx.font = '11px monospace';
+    ctx.fillText('q1 ' + (st.q1 * 57.3).toFixed(0) + '°  q2 ' + (st.q2 * 57.3).toFixed(0) + '°', 8, 14);
+    ctx.fillText('EE reach ' + ee.x.toFixed(2) + ' m  height ' + ee.z.toFixed(2) + ' m', 8, 28);
+    ctx.fillText('x = l1 cos q1 + l2 cos(q1+q2)', g.w - 215, 14);
+    ctx.fillText('z = h0 + l1 sin q1 + l2 sin(q1+q2)', g.w - 215, 28);
+  }
+
+  // ---------------------------------------------------------------- mission panel
+  // the call gave an approximate location (±3 m); the object itself must be found
+  target.rx = target.x + R.uniform(-2.5, 2.5); target.ry = target.y + R.uniform(-2.5, 2.5);
+  function tasks() {
+    var nF = Object.keys(facesSeen).length;
+    var list = [
+      ['Approach without contacting the object', !target.disturbed, target.disturbed ? 'fail' : minDist < 5 ? 'done' : ''],
+      ['Document ≥ 3 faces (visible, close range) — ' + nF + '/4', nF >= 3, nF >= 3 ? 'done' : ''],
+      ['Read the identification tag', tagRead, tagRead ? 'done' : '']
+    ];
+    if (LV.thermal) list.push(['Thermal survey of the object (find any warm region)', thermalSeen, thermalSeen ? 'done' : '']);
+    if (LV.puck) list.push(['Place the sensor puck 0.5–1.5 m from the object', !!rob.puckPlaced && !target.disturbed && placedDist() >= 0.5 && placedDist() <= 1.5, rob.puckPlaced ? (placedDist() >= 0.5 && placedDist() <= 1.5 && !target.disturbed ? 'done' : 'fail') : '']);
+    list.push(['Return to within 6 m of the OCU', returned, returned ? 'done' : '']);
+    U.$('#tasks').innerHTML = list.map(function (t) { return '<div class="task ' + t[2] + '">' + (t[2] === 'done' ? '✓ ' : t[2] === 'fail' ? '✗ ' : '○ ') + t[0] + '</div>'; }).join('');
+    return list;
+  }
+  function placedDist() { return rob.puckPlaced ? Math.hypot(rob.puckPlaced.x - target.x, rob.puckPlaced.y - target.y) : Infinity; }
+  function tele() {
+    var lk = link();
+    U.$('#tele').innerHTML = [['mission time', simT.toFixed(0) + ' / ' + LV.time + ' s'], ['battery', rob.battery.toFixed(1) + ' %'],
+      ['latency (RTT)', LV.lat + ' ± ' + LV.jitter + ' ms'], ['link margin', lk.margin.toFixed(1) + ' dB (' + lk.walls + ' obstruction' + (lk.walls === 1 ? '' : 's') + ')'],
+      ['packet loss', (lk.ploss * 100).toFixed(1) + ' %'], ['comms', commsLost ? '<span style="color:var(--red)">LOST</span>' : '<span style="color:var(--green)">OK</span>'],
+      ['pose σ (est.)', (Math.sqrt(rob.est.P)).toFixed(2) + ' m'], ['collisions', rob.collisions]]
+      .map(function (r) { return '<span class="k">' + r[0] + '</span><span>' + r[1] + '</span>'; }).join('');
+  }
+  U.$('#snap').onclick = function () { var r = renderCam(); snaps.push({ t: simT, face: r.face, px: r.px, mode: U.$('#camMode').value }); U.$('#snapInfo').textContent = snaps.length + ' frame(s) captured'; logf('Frame captured' + (r.face !== null ? ' (object in view)' : '')); };
+  if (!LV.thermal) U.$('#camMode').querySelector('[value=thermal]').disabled = true;
+
+  // ---------------------------------------------------------------- loop
+  var last = performance.now(), acc = 0;
+  function frame(now) {
+    if (ended) return;
+    var dt = Math.min(0.1, (now - last) / 1000); last = now; acc += dt;
+    while (acc > 1 / 60) { step(1 / 60); acc -= 1 / 60; }
+    renderCam(); renderMap(); renderArm(); tasks(); tele();
+    if (simT > LV.time || rob.battery <= 0) { logf(simT > LV.time ? 'Time limit reached' : 'Battery exhausted'); end(); return; }
+    requestAnimationFrame(frame);
+  }
+  logf('Mission start. Latency ' + LV.lat + ' ms. The object was reported near the dashed circle.');
+  requestAnimationFrame(frame);
+
+  // ---------------------------------------------------------------- debrief
+  function end() {
+    if (ended) return; ended = true;
+    var list = tasks(), done = list.filter(function (t) { return t[2] === 'done'; }).length;
+    var nF = Object.keys(facesSeen).length, poseErr = Math.hypot(rob.x - rob.est.x, rob.y - rob.est.y);
+    var progress = done / list.length, gate = 0.3 + 0.7 * progress; // scores for safety/comms/resources only mean something if the mission progressed
+    var safety = target.disturbed ? 0 : U.clamp(100 - 15 * rob.collisions - (minDist < 1.2 && !LV.puck ? 20 : 0), 0, 100);
+    var info = U.clamp(100 * (nF / 4 * 0.45 + (tagRead ? 0.3 : 0) + (LV.thermal ? (thermalSeen ? 0.25 : 0) : 0.25)), 0, 100);
+    var resource = gate * U.clamp(100 * (0.5 * rob.battery / LV.battery + 0.5 * (1 - simT / LV.time)) + 20, 0, 100);
+    safety *= gate;
+    var comms = gate * U.clamp(100 - 12 * lostEvents - lostTime * 2 - (U.$('#lcb').value === 'continue' && lostEvents ? 30 : 0), 0, 100);
+    var faceNames = ['tag face', 'stripe face', 'grille face', 'plain face'];
+    EOD.debrief.show({ title: 'EOD robot mission', seed: seed, level: level,
+      scores: [{ label: 'Safety (no disturbance)', value: safety, note: target.disturbed ? 'object disturbed' : rob.collisions + ' collision(s)' },
+        { label: 'Information', value: info, note: nF + '/4 faces, tag ' + (tagRead ? 'read' : 'not read') + (LV.thermal ? ', thermal ' + (thermalSeen ? 'yes' : 'no') : '') },
+        { label: 'Comms management', value: comms, note: lostEvents + ' loss event(s), ' + lostTime.toFixed(0) + ' s without link' },
+        { label: 'Resources', value: resource, note: rob.battery.toFixed(0) + '% battery, ' + simT.toFixed(0) + ' s' }],
+      observed: ['Faces documented: ' + (nF ? Object.keys(facesSeen).map(function (f) { return faceNames[f]; }).join(', ') : 'none') + '.', 'Tag: ' + (tagRead ? target.tag : 'not read') + '. Stripe colour: ' + target.stripe + ' (if the stripe face was seen).',
+        LV.thermal ? 'Thermal: the warm region was on the ' + faceNames[target.warmFace] + (thermalSeen ? ' — you found it.' : ' — you did not image it.') : 'Thermal not available at this level.', snaps.length + ' frame(s) captured for the record.'],
+      decided: ['Loss-of-comms behaviour: ' + U.$('#lcb').value + '.', 'Closest approach to the object: ' + minDist.toFixed(2) + ' m.', rob.puckPlaced ? 'Sensor puck placed ' + placedDist().toFixed(2) + ' m from the object.' : (LV.puck ? 'Sensor puck not placed.' : '')].filter(Boolean),
+      missed: list.filter(function (t) { return t[2] !== 'done'; }).map(function (t) { return t[0]; }),
+      uncertainty: ['Round-trip latency ' + LV.lat + ' ± ' + LV.jitter + ' ms: every image you saw was ~' + Math.round(LV.lat / 2) + ' ms old and every command arrived ~' + Math.round(LV.lat / 2) + ' ms late.',
+        'Estimated vs true robot position differed by ' + poseErr.toFixed(2) + ' m at the end (odometry drift, corrected only near landmark poles).',
+        'The reported location was off by ' + Math.hypot(target.rx - target.x, target.ry - target.y).toFixed(1) + ' m — reports are hypotheses, not facts.'],
+      reasoning: ['Under large latency, use move-and-wait: small motion, stop, let the video catch up, then decide (Ferrell 1965). Continuous driving with delayed video overshoots.',
+        'Approach so that the link path stays clear of buildings: lost comms at the object is the worst place to lose it.',
+        'Plan inspection around the object in an arc at constant standoff, documenting each face; never let the robot body contact the item.',
+        '"Continue last command" is not a safe loss-of-comms behaviour; stop or retro-traverse are defensible choices with different trade-offs.'],
+      physics: ['Radio path loss grows as 20·log10(d) plus losses through obstructions; below the receiver sensitivity packets are lost.', 'Thermal contrast reveals heat sources invisible in the visible band; visible imaging needs illumination.'],
+      engineering: ['Delay in a teleoperation loop reduces phase margin — operators compensate by lowering their "gain" (move-and-wait).', 'Dead-reckoning error grows with distance; landmarks bound it (06.6).', 'Arm forward kinematics: x = l1 cos q1 + l2 cos(q1+q2), z = h0 + l1 sin q1 + l2 sin(q1+q2) (06.3).'],
+      links: [{ href: EOD.COURSE + 'lessons/stage-06/lesson-05', text: '06.5 Teleoperation & HMI' }, { href: EOD.COURSE + 'lessons/stage-06/lesson-09', text: '06.9 Comms & fail-safe' },
+        { href: EOD.COURSE + 'lessons/stage-06/lesson-06', text: '06.6 State estimation' }, { href: EOD.COURSE + 'lessons/stage-06/lesson-03', text: '06.3 Manipulators' }, { href: EOD.COURSE + 'projects/p11-teleoperation/README', text: 'Project P11 Teleoperation' }]
+    });
+  }
+  U.$('#end').onclick = end;
+})();
+</script>
+</body>
+</html>
