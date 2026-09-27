@@ -28,11 +28,11 @@ from real training pathways is in [research-synthesis.md](research-synthesis.md)
 | Stage | Title | Lessons | Level | Core maths | Simulators / projects | Est. hours |
 |---|---|---|---|---|---|---|
 | 0 | Orientation | 00.1–00.2 | Beginner | — | Sim A (tutorial mode) | 6 |
-| 1 | Physics foundations | 01.1–01.6 | Beginner→Int. | calculus, ODEs, dimensional analysis | Shock-tube explorer, P01 | 30 |
+| 1 | Physics foundations | 01.1–01.7 | Beginner→Int. | calculus, ODEs, dimensional analysis | Shock-tube explorer, P01 | 30 |
 | 2 | Chemistry & energetic materials (science) | 02.1–02.3 | Intermediate | thermochemistry, Arrhenius kinetics | CJ/ZND explorer | 18 |
 | 3 | Explosive hazards & ordnance recognition | 03.1–03.4 | Beginner→Int. | — (classification, risk) | Recognition trainer (Sim H) | 16 |
 | 4 | Blast effects | 04.1–04.4 | Intermediate | scaling laws, SDOF ODEs, P–I | Sim D, P01 | 24 |
-| 5 | Detection | 05.1–05.6 | Int.→Adv. | detection theory, Bayes, signals, EM, attenuation | Sim C, P02, P03 | 36 |
+| 5 | Detection | 05.1–05.7 | Int.→Adv. | detection theory, Bayes, signals, EM, attenuation | Sim C, P02, P03 | 36 |
 | 6 | Robotics | 06.1–06.9 | Int.→Expert | linear algebra, Lie groups (light), control, KF, SLAM, planning | Sim B, Sim G, P04–P08, P11 | 60 |
 | 7 | EOD decision-making | 07.1–07.2 | Advanced | decision theory, VOI, POMDP intuition | Sim A, Sim F, P12 | 14 |
 | 8 | Forensics & post-blast investigation | 08.1–08.3 | Advanced | inverse problems, photogrammetry, Bayesian reconstruction | Sim E | 18 |
@@ -55,6 +55,7 @@ Total ≈ **350–400 hours** (a serious part-time year).
 - **01.4** Reflection, transmission, dynamic pressure: impedance, normal & oblique reflection, Mach stem, stagnation & dynamic pressure, drag loading.
 - **01.5** Dimensional analysis and scaling laws: Buckingham Π, Hopkinson–Cranz cube-root scaling, Sachs scaling, similarity, where scaling breaks.
 - **01.6** Structural response and fragmentation physics (conceptual): SDOF oscillators, impulsive vs quasi-static regimes, pressure–impulse diagrams, energy methods, fragment velocity/deceleration and statistics at a conceptual level.
+- **01.7** Electricity, electromagnetism and electronics for EOD technology: circuits, energy storage, sensors and transducers, EM waves and RF propagation, electrostatic discharge and electromagnetic-environment hazards to ordnance (HERO/ESD) as *safety concepts* — the physics that detection (Stage 5), robotics (Stage 6) and communications (06.9) rest on. (Every training pathway surveyed teaches electricity first.)
 
 ### Stage 2 — Chemistry and energetic materials (science only)
 - **02.1** Chemical energy: redox, combustion, bond energies, enthalpy of formation/reaction, Hess's law, gas generation, adiabatic flame temperature, Arrhenius kinetics — with non-explosive textbook examples.
@@ -63,7 +64,7 @@ Total ≈ **350–400 hours** (a serious part-time year).
 
 ### Stage 3 — Explosive hazards and ordnance recognition
 - **03.1** Taxonomy of explosive hazards: EO, UXO, AXO, ERW, IEDs, mines, CBRN overlap; ammunition categories and marking conventions; why the category drives the professional response.
-- **03.2** Conventional munitions families: projected (artillery, mortar, rocket), thrown (grenades), dropped (aircraft bombs, submunitions), placed (mines, demolition stores) — features used for recognition, and fuzing/safety-and-arming as a *design concept* (why fired/dropped ordnance may be more hazardous than stored ordnance).
+- **03.2** Conventional munitions families: projected (artillery, mortar, rocket), thrown (grenades), dropped (aircraft bombs, submunitions), placed (mines, demolition stores) — features used for recognition; the explosive train and fuzing as a *systems-engineering* concept; safety-and-arming as a **state machine** with independent safety features and environmental interlocks (public fuze-safety design principles), and why fired/dropped ordnance whose state is unknown may be more hazardous than stored ordnance.
 - **03.3** Landmines, cluster munitions, abandoned & historical ordnance: humanitarian context, legacy contamination (WWI/WWII, Indochina), degradation over decades, underwater/dumped munitions.
 - **03.4** Improvised explosive hazards and vehicle-related hazards at the recognition level: the concept of an improvised hazard, indicators and the "suspicious item" assessment (unattended vs suspicious), victim-operated vs command concepts as *threat categories*, why every improvised item is treated as unique, and the counter-IED "defeat the network / train the force / defeat the device" framework.
 
@@ -80,6 +81,7 @@ Total ≈ **350–400 hours** (a serious part-time year).
 - **05.4** Trace and vapour detection: vapour pressure, sampling, ion-mobility spectrometry, mass spectrometry, colorimetry, canines, false positives from interferents.
 - **05.5** Imaging and remote sensing: millimetre-wave, thermal IR (diurnal contrast of buried objects), acoustic/seismic, hyperspectral, drones for non-technical survey.
 - **05.6** Sensor fusion: Bayesian fusion, Dempster–Shafer (and its pitfalls), feature- vs decision-level fusion, correlated errors, sensor selection by expected information gain.
+- **05.7** Search theory and area clearance: Koopman search theory, sweep width, probability of detection vs effort, optimal effort allocation, humanitarian land release (non-technical survey → technical survey → clearance) and quality assurance sampling.
 
 ### Stage 6 — Robotics
 - **06.1** EOD robot systems: history (Wheelbarrow → PackBot/TALON/tEODor → modern common robotic systems), architecture (mobility, manipulation, sensing, comms, OCU), requirements & standard test methods (NIST/ASTM E54.09).
@@ -94,7 +96,7 @@ Total ≈ **350–400 hours** (a serious part-time year).
 
 ### Stage 7 — EOD decision-making
 - **07.1** Decisions under uncertainty: the incident as a sequential decision problem, hypotheses and evidence, value of information, exposure minimisation, belief-state (POMDP) framing, cognitive biases.
-- **07.2** Incident management at the conceptual level: cordons and isolation logic, information gathering, sensor/robot tasking, secondary hazards, evacuation considerations, evidence preservation, escalation to specialist resources, ICS/command interfaces.
+- **07.2** Incident management at the conceptual level: cordons and isolation logic, time–distance–shielding, information gathering, sensor/robot tasking, secondary hazards, evacuation considerations, evidence preservation, escalation to specialist resources, ICS/command interfaces, and the *families* of disposal outcome (remove, destroy in place, render safe) as organisational concepts only — how they are chosen at the level of risk, never how they are done.
 
 ### Stage 8 — Forensics and post-blast investigation
 - **08.1** The post-blast scene: scene safety, zoning, search patterns, documentation (photography, measurement), evidence collection & chain of custody.
@@ -134,6 +136,7 @@ flowchart LR
     L013 --> L015[01.5 Scaling laws]
     L011 --> L016[01.6 Structural response & fragments]
     L015 --> L016
+    L011 --> L017[01.7 Electricity & EM]
   end
   subgraph S2[Stage 2 · Chemistry]
     L021[02.1 Chemical energy] --> L022[02.2 Deflagration vs detonation] --> L023[02.3 Sensitivity, stability, ageing]
@@ -152,6 +155,7 @@ flowchart LR
     L051 --> L054[05.4 Trace & vapour]
     L051 --> L055[05.5 Imaging & remote sensing]
     L052 & L053 & L054 & L055 --> L056[05.6 Sensor fusion]
+    L056 --> L057[05.7 Search theory & land release]
   end
   subgraph S6[Stage 6 · Robotics]
     L061[06.1 EOD robot systems] --> L062[06.2 Frames & transforms] --> L063[06.3 Manipulators]
@@ -181,6 +185,9 @@ flowchart LR
   L033 --> L052
   L002 --> L051
   L013 --> L052
+  L017 --> L052
+  L017 --> L061
+  L017 --> L032
   L044 --> L071
   L056 --> L066
   L056 --> L071

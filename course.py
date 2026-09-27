@@ -48,7 +48,7 @@ LOW_QUIZ = 0.7
 
 # --------------------------------------------------------------------------- lessons
 def lesson_id(path: str) -> str | None:
-    m = re.search(r"lessons/module-(\d+)/lesson-(\d+)\.md$", path)
+    m = re.search(r"lessons/stage-(\d+)/lesson-(\d+)\.md$", path)
     if m:
         return f"{int(m.group(1)):02d}.{int(m.group(2))}"
     m = re.search(r"lessons/frontier/update-(\d+)\.md$", path)
