@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sim G · Robotics Engineering</title>
+<link rel="stylesheet" href="../common/sim.css">
+<style>
+  .layout { grid-template-columns: 1fr 1fr; }
+  textarea { width: 100%; height: 360px; font-family: var(--mono); font-size: 12px; line-height: 1.45; white-space: pre; tab-size: 2; }
+  .tabs button.active { border-color: var(--accent); color: var(--accent); }
+  table.m { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 12px; }
+  table.m td, table.m th { border-bottom: 1px solid var(--line); padding: 3px 6px; text-align: right; }
+  table.m td:first-child, table.m th:first-child { text-align: left; }
+  #desc { font-size: 13px; line-height: 1.5; }
+  #desc code { font-family: var(--mono); color: var(--cyan); }
+  @media (max-width: 1100px) { .layout { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="row tabs" id="tabs" style="padding:8px 12px;border-bottom:1px solid var(--line)"></div>
+<div class="layout">
+  <div class="panel">
+    <h2 id="ctitle"></h2>
+    <div id="desc"></div>
+    <canvas id="world" style="margin-top:8px"></canvas>
+    <div class="row"><label>animate trial</label><select id="trialSel"></select><button id="anim">▶ replay</button><span class="hint" id="animInfo"></span></div>
+  </div>
+  <div class="panel">
+    <h2>Your code <span class="hint">(JavaScript · runs locally in your browser)</span></h2>
+    <textarea id="code" spellcheck="false"></textarea>
+    <div class="row"><button class="primary" id="run">Run trials</button><button id="resetCode">reset to baseline</button><button id="debrief">Submit result → debrief</button></div>
+    <div class="log" id="out" style="max-height:120px"></div>
+    <h2 style="margin-top:8px">Metrics</h2>
+    <div id="metrics"></div>
+  </div>
+</div>
+<script src="../common/eod.js"></script>
+<script>
+(function () {
+  'use strict';
+  var U = EOD.util, level;
+  var diff = EOD.ui.difficultySelect(function (v) { level = v; });
+  level = diff.value;
+  EOD.ui.header('G', 'Robotics Engineering', 'write controllers & planners · measure · iterate', [U.el('span', { class: 'hint' }, 'difficulty'), diff]);
+  var seed0 = EOD.seedFromUrl();
+  var out = EOD.ui.logger(U.$('#out'));
+  function noiseScale() { return { Beginner: 0.5, Intermediate: 1, Advanced: 1.6, Expert: 2.4 }[level]; }
+  function wrap(a) { return Math.atan2(Math.sin(a), Math.cos(a)); }
+  var LIB = { wrap: wrap, clamp: U.clamp, hypot: Math.hypot };
+
+  // ======================================================= shared 2D world utilities
+  function boxSegs(boxes) { var s = []; boxes.forEach(function (b) { var x = b[0], y = b[1], w = b[2], h = b[3]; s.push([x, y, x + w, y], [x + w, y, x + w, y + h], [x + w, y + h, x, y + h], [x, y + h, x, y]); }); return s; }
+  function ray(segs, ox, oy, a, maxD) {
+    var dx = Math.cos(a), dy = Math.sin(a), best = maxD;
+    for (var i = 0; i < segs.length; i++) { var s = segs[i], ex = s[2] - s[0], ey = s[3] - s[1], den = dx * ey - dy * ex; if (Math.abs(den) < 1e-12) continue;
+      var t = ((s[0] - ox) * ey - (s[1] - oy) * ex) / den, u = ((s[0] - ox) * dy - (s[1] - oy) * dx) / den; if (t > 0 && t < best && u >= 0 && u <= 1) best = t; }
+    return best;
+  }
+  function inBox(boxes, x, y, r) { for (var i = 0; i < boxes.length; i++) { var b = boxes[i]; if (x > b[0] - r && x < b[0] + b[2] + r && y > b[1] - r && y < b[1] + b[3] + r) return true; } return false; }
+  function view(cv, W, H) { var g = EOD.hidpi(cv, Math.round((cv.clientWidth || 600) * H / W)); g.s = g.w / W; g.ctx.fillStyle = '#0b1017'; g.ctx.fillRect(0, 0, g.w, g.h); return g; }
+  function drawBoxes(g, boxes, col) { boxes.forEach(function (b) { g.ctx.fillStyle = col || '#3b4757'; g.ctx.fillRect(b[0] * g.s, b[1] * g.s, b[2] * g.s, b[3] * g.s); }); }
+  function drawRobot(g, x, y, th, col) { var c = g.ctx; c.save(); c.translate(x * g.s, y * g.s); c.rotate(th); c.fillStyle = col || '#fb923c'; c.fillRect(-0.35 * g.s, -0.25 * g.s, 0.7 * g.s, 0.5 * g.s); c.fillStyle = '#fff'; c.fillRect(0.2 * g.s, -0.05 * g.s, 0.15 * g.s, 0.1 * g.s); c.restore(); }
+  function drawPath(g, pts, col) { var c = g.ctx; c.strokeStyle = col; c.beginPath(); pts.forEach(function (p, i) { if (i) c.lineTo(p[0] * g.s, p[1] * g.s); else c.moveTo(p[0] * g.s, p[1] * g.s); }); c.stroke(); }
+
+  // ======================================================= challenges
+  var CH = {};
+
+  // ---------- 1 · obstacle course (reactive navigation with lidar)
+  CH.course = {
+    title: '1 · Obstacle course — reactive navigation', W: 30, H: 16,
+    desc: 'Reach the goal (green) through unknown clutter using a 16-beam lidar and a noisy goal range/bearing. Write <code>controller(obs, mem)</code> returning <code>{v, w}</code> (v ∈ [−1, 1] m/s, w ∈ [−1.5, 1.5] rad/s), called at 10 Hz. <code>obs.lidar[i]</code> is the range at bearing <code>obs.angles[i]</code> (robot frame, 0 = ahead), max 8 m. <code>obs.goal = {range, bearing}</code>. Collision or 90 s = failure. Scored over 8 random courses: success rate, time, minimum clearance.',
+    code: "function controller(obs, mem) {\n  // Baseline: head for the goal; if something is close ahead, turn left.\n  var front = Math.min(obs.lidar[0], obs.lidar[1], obs.lidar[15]);\n  if (front < 1.2) return { v: 0.1, w: 1.2 };\n  return { v: 0.8, w: 1.5 * obs.goal.bearing };\n}",
+    gen: function (r) {
+      var boxes = [], n = { Beginner: 8, Intermediate: 12, Advanced: 16, Expert: 20 }[level];
+      for (var i = 0; i < n; i++) { var w = r.uniform(0.8, 2.6), h = r.uniform(0.8, 3.5), x = r.uniform(5, 25 - w), y = r.uniform(0.5, 15.5 - h); boxes.push([x, y, w, h]); }
+      var walls = [[0, -1, 30, 1], [0, 16, 30, 1], [-1, 0, 1, 16], [30, 0, 1, 16]];
+      var goal = [r.uniform(27, 29), r.uniform(2, 14)];
+      boxes = boxes.filter(function (b) { return !(goal[0] > b[0] - 1 && goal[0] < b[0] + b[2] + 1 && goal[1] > b[1] - 1 && goal[1] < b[1] + b[3] + 1); });
+      return { boxes: boxes.concat(walls), vis: boxes, start: [1.5, 8, 0], goal: goal };
+    },
+    run: function (fn, w, r) {
+      var segs = boxSegs(w.boxes), x = w.start[0], y = w.start[1], th = w.start[2], mem = {}, path = [[x, y]], minClr = 99, ns = noiseScale();
+      var angles = []; for (var k = 0; k < 16; k++) angles.push(wrap(k * 2 * Math.PI / 16));
+      for (var t = 0; t < 900; t++) {
+        var lid = angles.map(function (a) { var d = ray(segs, x, y, th + a, 8); minClr = Math.min(minClr, d); return Math.max(0, d + r.normal(0, 0.03 * ns)); });
+        var gd = Math.hypot(w.goal[0] - x, w.goal[1] - y), gb = wrap(Math.atan2(w.goal[1] - y, w.goal[0] - x) - th);
+        if (gd < 0.5) return { ok: true, t: t / 10, path: path, clr: minClr };
+        var u; try { u = fn({ lidar: lid, angles: angles, goal: { range: gd + r.normal(0, 0.1 * ns), bearing: gb + r.normal(0, 0.03 * ns) }, t: t / 10 }, mem) || {}; } catch (e) { return { ok: false, err: e.message, path: path, t: t / 10, clr: minClr }; }
+        var v = U.clamp(+u.v || 0, -1, 1), om = U.clamp(+u.w || 0, -1.5, 1.5);
+        th += om * 0.1; var nx = x + v * Math.cos(th) * 0.1, ny = y + v * Math.sin(th) * 0.1;
+        if (inBox(w.boxes, nx, ny, 0.3)) return { ok: false, crash: true, path: path, t: t / 10, clr: 0 };
+        x = nx; y = ny; path.push([x, y]);
+      }
+      return { ok: false, timeout: true, path: path, t: 90, clr: minClr };
+    },
+    draw: function (g, w, res) { drawBoxes(g, w.vis); g.ctx.fillStyle = '#4ade80'; g.ctx.beginPath(); g.ctx.arc(w.goal[0] * g.s, w.goal[1] * g.s, 0.5 * g.s, 0, 7); g.ctx.fill(); if (res) drawPath(g, res.path, res.ok ? '#22d3ee' : '#f87171'); },
+    metrics: function (rs) { var ok = rs.filter(function (r) { return r.ok; }); return [['success rate', (100 * ok.length / rs.length).toFixed(0) + ' %'], ['mean time (successes)', ok.length ? (ok.reduce(function (a, r) { return a + r.t; }, 0) / ok.length).toFixed(1) + ' s' : '—'], ['crashes', rs.filter(function (r) { return r.crash; }).length], ['timeouts', rs.filter(function (r) { return r.timeout; }).length], ['min clearance (median)', median(rs.map(function (r) { return r.clr; })).toFixed(2) + ' m']]; },
+    score: function (rs) { var ok = rs.filter(function (r) { return r.ok; }).length / rs.length; return [{ label: 'Success', value: 100 * ok }, { label: 'Safety (no crashes)', value: 100 * (1 - rs.filter(function (r) { return r.crash; }).length / rs.length) }]; },
+    lessons: ['Pure reactive rules (turn-left-when-blocked) get trapped in concave obstacles (local minima) — add memory (bug algorithms) or plan on a map (06.8).', 'Treat clearance as a cost, not just a constraint: standoff from hazards matters in EOD.', 'Noise in bearing is amplified by high heading gains — tune for robustness, not speed.'],
+    links: ['lessons/stage-06/lesson-08', 'lessons/stage-06/lesson-04']
+  };
+
+  // ---------- 2 · arm reach (inverse kinematics)
+  CH.ik = {
+    title: '2 · Reach a target — inverse kinematics', W: 5, H: 3.2,
+    desc: 'A planar 2-link arm (l₁ = 1.0 m, l₂ = 0.8 m, base at the origin). Write <code>ik(x, y)</code> returning joint angles <code>[q1, q2]</code> (radians) whose forward kinematics reaches (x, y), or <code>null</code> if the point is unreachable. Joint limits: q1 ∈ [−π, π], q2 ∈ [−π, π]. 40 random targets (some unreachable). Score: fraction reached within 1 cm + correct unreachable calls. (Lesson 06.3.)',
+    code: "function ik(x, y) {\n  // Baseline: point the whole arm at the target (wrong for most targets).\n  return [Math.atan2(y, x), 0];\n}",
+    gen: function (r) { var ts = []; for (var i = 0; i < 40; i++) { var rad = r.bernoulli(0.2) ? r.uniform(1.85, 2.2) : r.bernoulli(0.1) ? r.uniform(0, 0.18) : r.uniform(0.25, 1.78), a = r.uniform(-0.3, Math.PI + 0.3); ts.push([rad * Math.cos(a), rad * Math.sin(a)]); } return { targets: ts }; },
+    run: function (fn, w) {
+      var res = [];
+      w.targets.forEach(function (p) {
+        var reach = Math.hypot(p[0], p[1]) <= 1.8 + 1e-9 && Math.hypot(p[0], p[1]) >= 0.2 - 1e-9, q;
+        try { q = fn(p[0], p[1]); } catch (e) { res.push({ p: p, ok: false, err: e.message }); return; }
+        if (!q) { res.push({ p: p, ok: !reach, nullc: true, reach: reach }); return; }
+        var ex = Math.cos(q[0]) + 0.8 * Math.cos(q[0] + q[1]), ey = Math.sin(q[0]) + 0.8 * Math.sin(q[0] + q[1]), err = Math.hypot(ex - p[0], ey - p[1]);
+        res.push({ p: p, q: q, ok: reach && err < 0.01, err: err, reach: reach });
+      });
+      return { ok: res.filter(function (r) { return r.ok; }).length / res.length >= 0.95, items: res, path: [] };
+    },
+    draw: function (g, w, res) {
+      var c = g.ctx, ox = 2.5, oy = 2.9, s = g.s; c.strokeStyle = '#1f2a38'; c.beginPath(); c.arc(ox * s, oy * s, 1.8 * s, Math.PI, 2 * Math.PI); c.stroke(); c.beginPath(); c.arc(ox * s, oy * s, 0.2 * s, Math.PI, 2 * Math.PI); c.stroke();
+      (res ? res.items : w.targets.map(function (p) { return { p: p }; })).forEach(function (it) {
+        c.fillStyle = it.ok === undefined ? '#9fb0c6' : it.ok ? '#4ade80' : '#f87171'; c.beginPath(); c.arc((ox + it.p[0]) * s, (oy - it.p[1]) * s, 3, 0, 7); c.fill();
+      });
+      var last = res && res.items.filter(function (i) { return i.q; }).pop();
+      if (last) { var q = last.q, ex = Math.cos(q[0]), ey = Math.sin(q[0]), fx = ex + 0.8 * Math.cos(q[0] + q[1]), fy = ey + 0.8 * Math.sin(q[0] + q[1]);
+        c.strokeStyle = '#d6deea'; c.lineWidth = 4; c.beginPath(); c.moveTo(ox * s, oy * s); c.lineTo((ox + ex) * s, (oy - ey) * s); c.lineTo((ox + fx) * s, (oy - fy) * s); c.stroke(); c.lineWidth = 1; }
+    },
+    metrics: function (rs) { var it = rs[0].items; return [['reached within 1 cm', it.filter(function (i) { return i.ok && i.reach; }).length + ' / ' + it.filter(function (i) { return i.reach; }).length], ['unreachable correctly rejected', it.filter(function (i) { return i.ok && !i.reach; }).length + ' / ' + it.filter(function (i) { return !i.reach; }).length], ['median error (answered)', median(it.filter(function (i) { return isFinite(i.err); }).map(function (i) { return i.err; })).toExponential(2) + ' m']]; },
+    score: function (rs) { var it = rs[0].items; return [{ label: 'IK accuracy', value: 100 * it.filter(function (i) { return i.ok; }).length / it.length }]; },
+    lessons: ['Law of cosines: cos q₂ = (x² + y² − l₁² − l₂²)/(2 l₁ l₂); q₁ = atan2(y, x) − atan2(l₂ sin q₂, l₁ + l₂ cos q₂). Two solutions (elbow up/down).', 'Reachable set is an annulus |l₁ − l₂| ≤ r ≤ l₁ + l₂; test it before taking acos.', 'Numerical IK (damped least squares) generalises to arms without closed forms.'],
+    links: ['lessons/stage-06/lesson-03', 'projects/p08-manipulator/README']
+  };
+
+  // ---------- 3 · maintain communications (relay placement)
+  CH.comms = {
+    title: '3 · Maintain communications — relay placement', W: 40, H: 24,
+    desc: 'The robot must drive the route (dashed) from the operator (cyan) to the object behind the buildings. Link model per hop: margin = 46 − 20·log₁₀(d) − 22·(buildings crossed) dB; a hop works if margin ≥ 6 dB. Write <code>relays(route, buildings, ocu, maxRelays)</code> returning up to <code>maxRelays</code> relay positions <code>[[x,y],…]</code> (not inside buildings). Score: fraction of route points with a working chain to the OCU (relays may chain).',
+    code: "function relays(route, buildings, ocu, maxRelays) {\n  // Baseline: put relays evenly along the straight line from the OCU to the end of the route.\n  var end = route[route.length - 1], out = [];\n  for (var i = 1; i <= maxRelays; i++) {\n    var f = i / (maxRelays + 1);\n    out.push([ocu[0] + f * (end[0] - ocu[0]), ocu[1] + f * (end[1] - ocu[1])]);\n  }\n  return out;\n}",
+    gen: function (r) {
+      var b = [[10, 3, 6, 8], [10, 14, 6, 7], [22, 0, 5, 10], [22, 13, 5, 11], [31, 6, 4, 12]].map(function (x) { return [x[0] + r.uniform(-1, 1), x[1] + r.uniform(-0.5, 0.5), x[2], x[3]]; });
+      var route = [[3, 12], [8, 12], [8.5, 12.5], [18, 12.5], [19, 11], [19.5, 5], [20, 2], [29, 11.5], [29.5, 20], [38, 21]];
+      return { b: b, route: densify(route, 0.5), ocu: [2, 12], max: { Beginner: 4, Intermediate: 3, Advanced: 2, Expert: 2 }[level] };
+    },
+    run: function (fn, w) {
+      var rel; try { rel = fn(w.route.map(function (p) { return p.slice(); }), w.b.map(function (x) { return x.slice(); }), w.ocu.slice(), w.max) || []; } catch (e) { return { ok: false, err: e.message, cov: 0, path: [] }; }
+      rel = rel.slice(0, w.max).filter(function (p) { return !inBox(w.b, p[0], p[1], 0); });
+      var nodes = [w.ocu].concat(rel);
+      function hop(a, b) { var d = Math.max(1, Math.hypot(a[0] - b[0], a[1] - b[1])); var n = 0; /* link model: see desc */ w.b.forEach(function (bx) { for (var k = 1; k < 40; k++) { var px = a[0] + (b[0] - a[0]) * k / 40, py = a[1] + (b[1] - a[1]) * k / 40; if (px > bx[0] && px < bx[0] + bx[2] && py > bx[1] && py < bx[1] + bx[3]) { n++; break; } } }); return 46 - 20 * Math.log10(d) - 22 * n >= 6; }
+      var conn = [true]; for (var it = 0; it < nodes.length; it++) for (var i = 1; i < nodes.length; i++) if (!conn[i]) for (var j = 0; j < nodes.length; j++) if (conn[j] && hop(nodes[i], nodes[j])) { conn[i] = true; break; }
+      var cov = w.route.map(function (p) { return nodes.some(function (n, i) { return conn[i] && hop(n, p); }); });
+      return { ok: cov.every(Boolean), cov: cov.filter(Boolean).length / cov.length, covArr: cov, rel: rel, conn: conn, path: [] };
+    },
+    draw: function (g, w, res) {
+      drawBoxes(g, w.b); var c = g.ctx; c.fillStyle = '#22d3ee'; c.fillRect(w.ocu[0] * g.s - 5, w.ocu[1] * g.s - 5, 10, 10);
+      w.route.forEach(function (p, i) { c.fillStyle = res ? (res.covArr[i] ? '#4ade80' : '#f87171') : '#9fb0c6'; c.fillRect(p[0] * g.s - 2, p[1] * g.s - 2, 4, 4); });
+      if (res && res.rel) res.rel.forEach(function (p, i) { c.fillStyle = res.conn[i + 1] ? '#facc15' : '#6b7280'; c.beginPath(); c.arc(p[0] * g.s, p[1] * g.s, 6, 0, 7); c.fill(); });
+    },
+    metrics: function (rs) { return [['route coverage', (100 * rs[0].cov).toFixed(1) + ' %'], ['relays used', (rs[0].rel || []).length + ' / ' + CH.comms.world.max]]; },
+    score: function (rs) { return [{ label: 'Route coverage', value: 100 * rs[0].cov }]; },
+    lessons: ['Buildings, not distance, dominate the budget here: 22 dB per obstruction equals a ~13× distance increase.', 'Place relays at corners that see both the previous node and the next leg (line-of-sight chaining).', 'A fibre tether removes the radio problem at the cost of mobility and snagging risk.'],
+    links: ['lessons/stage-06/lesson-09', 'lessons/stage-01/lesson-07']
+  };
+
+  // ---------- 4 · minimise energy (planning on a cost map)
+  CH.energy = {
+    title: '4 · Minimise battery consumption — cost-map planning', W: 30, H: 20,
+    desc: 'Terrain grid (1 m cells): paved (cost 1), grass (1.8), mud (4), rubble (impassable). Energy of a path = Σ cell cost × step length (8-connected; diagonal = √2). Write <code>plan(grid, start, goal)</code> returning a list of cells <code>[[i,j],…]</code> from start to goal. <code>grid[j][i]</code> is the cost (Infinity = impassable). Score: optimal energy / your energy (and validity).',
+    code: "function plan(grid, start, goal) {\n  // Baseline: straight line (ignores terrain costs).\n  var path = [], n = Math.max(Math.abs(goal[0]-start[0]), Math.abs(goal[1]-start[1]));\n  for (var k = 0; k <= n; k++) path.push([Math.round(start[0] + (goal[0]-start[0])*k/n), Math.round(start[1] + (goal[1]-start[1])*k/n)]);\n  return path;\n}",
+    gen: function (r) {
+      for (var attempt = 0; attempt < 50; attempt++) { var w = this.gen1(r); if (isFinite(w.opt.E)) return w; }
+      return w;
+    },
+    gen1: function (r) {
+      var G = [], W = 30, H = 20;
+      var blobs = []; for (var b = 0; b < 9; b++) blobs.push([r.uniform(4, 26), r.uniform(0, 20), r.uniform(2, 5), r.pick([1.8, 4, 4, Infinity])]);
+      for (var j = 0; j < H; j++) { G.push([]); for (var i = 0; i < W; i++) { var c = 1; blobs.forEach(function (bl) { if (Math.hypot(i - bl[0], (j - bl[1]) * 1.2) < bl[2]) c = Math.max(c, bl[3]); }); G[j].push(c); } }
+      var s = [1, r.int(2, 17)], g = [28, r.int(2, 17)]; G[s[1]][s[0]] = 1; G[g[1]][g[0]] = 1;
+      var o = dijkstra(G, s, g); if (o.E === undefined) o.E = Infinity; return { G: G, s: s, g: g, opt: o };
+    },
+    run: function (fn, w) {
+      var p; try { p = fn(w.G.map(function (r) { return r.slice(); }), w.s.slice(), w.g.slice()); } catch (e) { return { ok: false, err: e.message, path: [] }; }
+      if (!p || !p.length) return { ok: false, err: 'no path', path: [] };
+      var E = 0, valid = p[0][0] === w.s[0] && p[0][1] === w.s[1] && p[p.length - 1][0] === w.g[0] && p[p.length - 1][1] === w.g[1];
+      for (var k = 1; k < p.length; k++) { var di = Math.abs(p[k][0] - p[k - 1][0]), dj = Math.abs(p[k][1] - p[k - 1][1]); if (di > 1 || dj > 1) valid = false; var c = w.G[p[k][1]] && w.G[p[k][1]][p[k][0]]; if (c === undefined || !isFinite(c)) valid = false; E += (c || 0) * (di && dj ? Math.SQRT2 : 1); }
+      return { ok: valid && E <= w.opt.E * 1.02, valid: valid, E: E, path: p.map(function (q) { return [q[0] + 0.5, q[1] + 0.5]; }), opt: w.opt };
+    },
+    draw: function (g, w, res) {
+      var c = g.ctx; for (var j = 0; j < w.G.length; j++) for (var i = 0; i < w.G[0].length; i++) { var v = w.G[j][i]; c.fillStyle = !isFinite(v) ? '#6b4f3a' : v >= 4 ? '#3b2f22' : v > 1 ? '#1f3322' : '#20262e'; c.fillRect(i * g.s, j * g.s, g.s + 0.5, g.s + 0.5); }
+      c.fillStyle = '#22d3ee'; c.fillRect(w.s[0] * g.s, w.s[1] * g.s, g.s, g.s); c.fillStyle = '#4ade80'; c.fillRect(w.g[0] * g.s, w.g[1] * g.s, g.s, g.s);
+      if (res) { drawPath(g, w.opt.path.map(function (q) { return [q[0] + 0.5, q[1] + 0.5]; }), 'rgba(74,222,128,.5)'); if (res.path) drawPath(g, res.path, res.valid ? '#fb923c' : '#f87171'); }
+    },
+    metrics: function (rs) { var r = rs[0]; return [['valid path', r.valid ? 'yes' : 'NO'], ['your energy', r.E ? r.E.toFixed(1) : '—'], ['optimal energy', r.opt ? r.opt.E.toFixed(1) : '—'], ['efficiency', r.E ? (100 * r.opt.E / r.E).toFixed(1) + ' %' : '—']]; },
+    score: function (rs) { var r = rs[0]; return [{ label: 'Energy efficiency', value: r.valid && r.E ? 100 * r.opt.E / r.E : 0 }]; },
+    lessons: ['Dijkstra/A* on the cost map gives the optimum; with an admissible heuristic (octile distance × min cost) A* explores far fewer cells.', 'Battery is the binding constraint for many EOD robot tasks — plan energy, not distance.', 'Add hazard standoff as another cost layer (06.8).'],
+    links: ['lessons/stage-06/lesson-08', 'projects/p06-path-planning/README']
+  };
+
+  // ---------- 5 · manipulate a fictional object (quasi-static pushing)
+  CH.push = {
+    title: '5 · Manipulate a fictional object — push it into the zone', W: 16, H: 10,
+    desc: 'A fictional inert crate (circle, r = 0.4 m) must be pushed into the target zone (green, r = 0.8 m) without the robot touching the walls. Quasi-static pushing: when the robot overlaps the crate, the crate is displaced along the contact normal. <code>controller(obs, mem)</code> receives <code>obs.robot {x,y,th}</code>, <code>obs.box {x,y}</code> (σ noise), <code>obs.zone {x,y}</code>; return <code>{v,w}</code>. 6 trials, 60 s each.',
+    code: "function controller(obs, mem) {\n  // Baseline: drive straight at the crate (it slides off sideways).\n  var r = obs.robot, b = obs.box;\n  var a = Math.atan2(b.y - r.y, b.x - r.x);\n  return { v: 0.6, w: 2 * LIB.wrap(a - r.th) };\n}",
+    gen: function (r) { return { robot: [2, r.uniform(2, 8), 0], box: [r.uniform(6, 9), r.uniform(3, 7)], zone: [r.uniform(12, 14), r.uniform(2, 8)] }; },
+    run: function (fn, w, r) {
+      var x = w.robot[0], y = w.robot[1], th = w.robot[2], bx = w.box[0], by = w.box[1], mem = {}, path = [[x, y]], bpath = [[bx, by]], ns = noiseScale();
+      for (var t = 0; t < 600; t++) {
+        if (Math.hypot(bx - w.zone[0], by - w.zone[1]) < 0.8 - 0.4 * 0.5) return { ok: true, t: t / 10, path: path, bpath: bpath };
+        var u; try { u = fn({ robot: { x: x, y: y, th: th }, box: { x: bx + r.normal(0, 0.03 * ns), y: by + r.normal(0, 0.03 * ns) }, zone: { x: w.zone[0], y: w.zone[1] }, t: t / 10 }, mem) || {}; } catch (e) { return { ok: false, err: e.message, path: path, bpath: bpath }; }
+        var v = U.clamp(+u.v || 0, -1, 1), om = U.clamp(+u.w || 0, -1.5, 1.5);
+        th += om * 0.1; x += v * Math.cos(th) * 0.1; y += v * Math.sin(th) * 0.1;
+        if (x < 0.35 || y < 0.35 || x > 15.65 || y > 9.65) return { ok: false, crash: true, path: path, bpath: bpath };
+        var d = Math.hypot(bx - x, by - y), mind = 0.75;
+        if (d < mind) { var nx = (bx - x) / d, ny = (by - y) / d; bx += nx * (mind - d); by += ny * (mind - d); }
+        if (bx < 0.4 || by < 0.4 || bx > 15.6 || by > 9.6) return { ok: false, lost: true, path: path, bpath: bpath };
+        path.push([x, y]); bpath.push([bx, by]);
+      }
+      return { ok: false, timeout: true, path: path, bpath: bpath };
+    },
+    draw: function (g, w, res) {
+      var c = g.ctx; c.strokeStyle = '#3b4757'; c.strokeRect(1, 1, g.w - 2, g.h - 2);
+      c.fillStyle = 'rgba(74,222,128,.25)'; c.beginPath(); c.arc(w.zone[0] * g.s, w.zone[1] * g.s, 0.8 * g.s, 0, 7); c.fill();
+      var b = res && res.bpath.length ? res.bpath[res.bpath.length - 1] : w.box; c.fillStyle = '#a3845c'; c.beginPath(); c.arc(b[0] * g.s, b[1] * g.s, 0.4 * g.s, 0, 7); c.fill();
+      if (res) { drawPath(g, res.path, res.ok ? '#22d3ee' : '#f87171'); drawPath(g, res.bpath, '#a3845c'); }
+    },
+    metrics: function (rs) { return [['success', rs.filter(function (r) { return r.ok; }).length + ' / ' + rs.length], ['wall contacts', rs.filter(function (r) { return r.crash; }).length], ['crate pushed out of area', rs.filter(function (r) { return r.lost; }).length]]; },
+    score: function (rs) { return [{ label: 'Manipulation success', value: 100 * rs.filter(function (r) { return r.ok; }).length / rs.length }]; },
+    lessons: ['Stable pushing needs the robot behind the crate on the crate→zone line: first go to a pre-push pose, then push along the line and correct laterally.', 'This is the planar version of manipulation planning: pre-grasp/pre-push poses, then a constrained motion.', 'Uncertainty in the object pose (noise) argues for slow, closed-loop corrections.'],
+    links: ['lessons/stage-06/lesson-03', 'lessons/stage-06/lesson-08']
+  };
+
+  // ---------- 6 · navigate with noisy sensors (estimation)
+  CH.noisy = {
+    title: '6 · Operate under sensor noise — localise and stop on the mark', W: 24, H: 16,
+    desc: 'Drive to the goal and <b>stop</b> within 0.5 m (declare arrival by returning <code>{v:0, w:0, done:true}</code>). You get noisy odometry increments <code>obs.odo = {dd, dth}</code> each step (biased & noisy) and, when within 7 m of a landmark with line of sight, range/bearing <code>obs.marks = [{id, range, bearing}]</code>. Landmark positions <code>obs.map</code> and your start pose are known. Dead reckoning alone drifts — fuse the landmarks (lesson 06.6). 8 trials.',
+    code: "function controller(obs, mem) {\n  // Baseline: dead reckoning only.\n  if (!mem.x) { mem.x = obs.start.x; mem.y = obs.start.y; mem.th = obs.start.th; }\n  mem.th += obs.odo.dth; mem.x += obs.odo.dd * Math.cos(mem.th); mem.y += obs.odo.dd * Math.sin(mem.th);\n  var dx = obs.goal.x - mem.x, dy = obs.goal.y - mem.y;\n  if (Math.hypot(dx, dy) < 0.2) return { v: 0, w: 0, done: true };\n  return { v: Math.min(0.8, Math.hypot(dx, dy)), w: 2 * LIB.wrap(Math.atan2(dy, dx) - mem.th) };\n}",
+    gen: function (r) { var marks = []; for (var i = 0; i < 6; i++) marks.push({ id: i, x: r.uniform(3, 21), y: r.uniform(2, 14) }); return { start: { x: 2, y: r.uniform(3, 13), th: 0 }, goal: { x: r.uniform(18, 22), y: r.uniform(2, 14) }, marks: marks, bias: r.uniform(0.9, 1.1), wbias: r.normal(0, 0.02) }; },
+    run: function (fn, w, r) {
+      var x = w.start.x, y = w.start.y, th = w.start.th, mem = {}, path = [[x, y]], ns = noiseScale(), lastv = 0, lastw = 0;
+      for (var t = 0; t < 900; t++) {
+        var dd = lastv * 0.1, dth = lastw * 0.1;
+        var odo = { dd: dd * w.bias * (1 + r.normal(0, 0.03 * ns)), dth: dth + w.wbias * 0.1 * ns + r.normal(0, 0.01 * ns) };
+        var marks = w.marks.filter(function (m) { return Math.hypot(m.x - x, m.y - y) < 7; }).map(function (m) { return { id: m.id, range: Math.hypot(m.x - x, m.y - y) + r.normal(0, 0.08 * ns), bearing: wrap(Math.atan2(m.y - y, m.x - x) - th + r.normal(0, 0.03 * ns)) }; });
+        var u; try { u = fn({ odo: odo, marks: marks, map: w.marks.map(function (m) { return { id: m.id, x: m.x, y: m.y }; }), start: w.start, goal: w.goal, t: t / 10 }, mem) || {}; } catch (e) { return { ok: false, err: e.message, path: path }; }
+        if (u.done) { var e2 = Math.hypot(x - w.goal.x, y - w.goal.y); return { ok: e2 < 0.5, err: e2, path: path, t: t / 10 }; }
+        lastv = U.clamp(+u.v || 0, -1, 1); lastw = U.clamp(+u.w || 0, -1.5, 1.5);
+        th += lastw * 0.1; x += lastv * Math.cos(th) * 0.1; y += lastv * Math.sin(th) * 0.1; path.push([x, y]);
+      }
+      return { ok: false, timeout: true, err: Math.hypot(x - w.goal.x, y - w.goal.y), path: path };
+    },
+    draw: function (g, w, res) { var c = g.ctx; w.marks.forEach(function (m) { c.fillStyle = '#c9b458'; c.fillRect(m.x * g.s - 3, m.y * g.s - 3, 6, 6); c.strokeStyle = 'rgba(201,180,88,.15)'; c.beginPath(); c.arc(m.x * g.s, m.y * g.s, 7 * g.s, 0, 7); c.stroke(); });
+      c.fillStyle = 'rgba(74,222,128,.35)'; c.beginPath(); c.arc(w.goal.x * g.s, w.goal.y * g.s, 0.5 * g.s, 0, 7); c.fill(); if (res) drawPath(g, res.path, res.ok ? '#22d3ee' : '#f87171'); },
+    metrics: function (rs) { return [['stopped within 0.5 m', rs.filter(function (r) { return r.ok; }).length + ' / ' + rs.length], ['median final error', median(rs.map(function (r) { return r.err || 99; })).toFixed(2) + ' m']]; },
+    score: function (rs) { return [{ label: 'Localisation success', value: 100 * rs.filter(function (r) { return r.ok; }).length / rs.length }]; },
+    lessons: ['Odometry scale bias and heading drift make dead-reckoning error grow with distance; heading error dominates.', 'An EKF with range-bearing landmark updates bounds the error; route past landmarks deliberately (active localisation).', 'Declare arrival only when your uncertainty is small — "done" is a decision under uncertainty.'],
+    links: ['lessons/stage-06/lesson-06', 'projects/p04-localization/README']
+  };
+
+  function densify(pts, step) { var out = []; for (var i = 1; i < pts.length; i++) { var a = pts[i - 1], b = pts[i], n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / step)); for (var k = 0; k < n; k++) out.push([a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n]); } out.push(pts[pts.length - 1]); return out; }
+  function median(a) { a = a.filter(isFinite).slice().sort(function (x, y) { return x - y; }); return a.length ? a[Math.floor(a.length / 2)] : NaN; }
+  function dijkstra(G, s, g) {
+    var H = G.length, W = G[0].length, dist = {}, prev = {}, key = function (i, j) { return i + ',' + j; }, open = [[0, s[0], s[1]]]; dist[key(s[0], s[1])] = 0;
+    while (open.length) {
+      open.sort(function (a, b) { return a[0] - b[0]; }); var cur = open.shift(), i = cur[1], j = cur[2];
+      if (cur[0] > dist[key(i, j)]) continue; if (i === g[0] && j === g[1]) break;
+      for (var di = -1; di <= 1; di++) for (var dj = -1; dj <= 1; dj++) { if (!di && !dj) continue; var ni = i + di, nj = j + dj; if (ni < 0 || nj < 0 || ni >= W || nj >= H || !isFinite(G[nj][ni])) continue;
+        var nd = cur[0] + G[nj][ni] * (di && dj ? Math.SQRT2 : 1), k2 = key(ni, nj); if (dist[k2] === undefined || nd < dist[k2]) { dist[k2] = nd; prev[k2] = [i, j]; open.push([nd, ni, nj]); } }
+    }
+    var p = [g.slice()], k = key(g[0], g[1]); while (prev[k]) { p.unshift(prev[k]); k = key(prev[k][0], prev[k][1]); }
+    return { E: dist[key(g[0], g[1])], path: p };
+  }
+
+  // ======================================================= UI glue
+  var cur = 'course', results = null, worlds = null;
+  var tabsEl = U.$('#tabs');
+  Object.keys(CH).forEach(function (k) { var b = U.el('button', { 'data-k': k }, CH[k].title.split(' — ')[0]); b.onclick = function () { select(k); }; tabsEl.appendChild(b); });
+  function saved(k) { try { return localStorage.getItem('eod-simG-' + k); } catch (e) { return null; } }
+  function select(k) {
+    cur = k; var c = CH[k]; results = null;
+    tabsEl.querySelectorAll('button').forEach(function (b) { b.classList.toggle('active', b.dataset.k === k); });
+    U.$('#ctitle').textContent = c.title; U.$('#desc').innerHTML = c.desc;
+    U.$('#code').value = saved(k) || c.code; U.$('#metrics').innerHTML = ''; U.$('#trialSel').innerHTML = '';
+    var r = EOD.rng(seed0 + k.length * 101); c.world = c.gen(r); worlds = [c.world];
+    drawCur();
+  }
+  function drawCur(res) { var c = CH[cur], g = view(U.$('#world'), c.W, c.H); c.draw(g, (worlds && worlds[+U.$('#trialSel').value || 0]) || c.world, res); }
+  U.$('#code').addEventListener('input', function () { try { localStorage.setItem('eod-simG-' + cur, this.value); } catch (e) {} });
+  U.$('#resetCode').onclick = function () { U.$('#code').value = CH[cur].code; try { localStorage.removeItem('eod-simG-' + cur); } catch (e) {} };
+  U.$('#run').onclick = function () {
+    var c = CH[cur], src = U.$('#code').value, fn;
+    var name = { course: 'controller', ik: 'ik', comms: 'relays', energy: 'plan', push: 'controller', noisy: 'controller' }[cur];
+    try { fn = new Function('LIB', src + '\n;return ' + name + ';')(LIB); } catch (e) { out('<span style="color:var(--red)">Compile error: ' + U.esc(e.message) + '</span>'); return; }
+    var nTr = { course: 8, ik: 1, comms: 1, energy: 1, push: 6, noisy: 8 }[cur];
+    worlds = []; results = [];
+    var t0 = performance.now();
+    for (var i = 0; i < nTr; i++) {
+      var r = EOD.rng(seed0 + 1000 * i + cur.length * 101), w = i === 0 ? c.world : c.gen(r);
+      if (i === 0 && (cur === 'comms' || cur === 'ik' || cur === 'energy')) w = c.world;
+      worlds.push(w); results.push(c.run(fn, w, EOD.rng(seed0 + 7 * i + 3)));
+    }
+    var errs = results.filter(function (x) { return x.err && typeof x.err === 'string'; });
+    if (errs.length) out('<span style="color:var(--red)">Runtime error: ' + U.esc(errs[0].err) + '</span>');
+    out(c.title.split(' — ')[0] + ': ran ' + nTr + ' trial(s) in ' + (performance.now() - t0).toFixed(0) + ' ms');
+    U.$('#metrics').innerHTML = '<table class="m">' + c.metrics(results).map(function (m) { return '<tr><td>' + m[0] + '</td><td>' + m[1] + '</td></tr>'; }).join('') + '</table>';
+    U.$('#trialSel').innerHTML = results.map(function (x, i) { return '<option value="' + i + '">' + (i + 1) + (x.ok ? ' ✓' : ' ✗') + '</option>'; }).join('');
+    drawCur(results[0]);
+  };
+  U.$('#trialSel').onchange = function () { if (results) drawCur(results[+this.value]); };
+  U.$('#anim').onclick = function () {
+    if (!results) return; var i = +U.$('#trialSel').value || 0, res = results[i], c = CH[cur];
+    if (!res.path || !res.path.length) { drawCur(res); return; }
+    var k = 0, N = res.path.length;
+    (function tick() {
+      var g = view(U.$('#world'), c.W, c.H); c.draw(g, worlds[i], null);
+      drawPath(g, res.path.slice(0, k + 1), '#22d3ee');
+      var p = res.path[k], q = res.path[Math.min(N - 1, k + 1)], th = Math.atan2(q[1] - p[1], q[0] - p[0]);
+      if (res.bpath) { var b = res.bpath[Math.min(k, res.bpath.length - 1)]; g.ctx.fillStyle = '#a3845c'; g.ctx.beginPath(); g.ctx.arc(b[0] * g.s, b[1] * g.s, 0.4 * g.s, 0, 7); g.ctx.fill(); }
+      drawRobot(g, p[0], p[1], th); U.$('#animInfo').textContent = 't = ' + (k / 10).toFixed(1) + ' s';
+      k += 3; if (k < N) requestAnimationFrame(tick); else drawCur(res);
+    })();
+  };
+  U.$('#debrief').onclick = function () {
+    if (!results) { out('Run your code first.'); return; }
+    var c = CH[cur];
+    EOD.debrief.show({ title: c.title, seed: seed0, level: level, scores: c.score(results),
+      observed: c.metrics(results).map(function (m) { return m[0] + ': ' + m[1]; }),
+      decided: ['Your ' + ({ course: 'controller', ik: 'IK solver', comms: 'relay plan', energy: 'planner', push: 'pushing controller', noisy: 'estimator/controller' }[cur]) + ' (' + U.$('#code').value.split('\n').length + ' lines).'],
+      missed: results.filter(function (r) { return !r.ok; }).slice(0, 5).map(function (r, i) { return 'Trial ' + (results.indexOf(r) + 1) + ': ' + (r.crash ? 'collision' : r.timeout ? 'timeout' : r.lost ? 'crate lost' : r.err && typeof r.err === 'string' ? r.err : 'objective not met') + '.'; }),
+      uncertainty: ['Sensor noise level: ' + level + ' (×' + noiseScale() + '). Scores are over randomised worlds — a controller tuned to one world is not a result.'],
+      reasoning: c.lessons, physics: [], engineering: ['Measure over many randomised trials, report success rate with its uncertainty, and inspect failures one by one — the same discipline as T&E of fielded robots (NIST/ASTM E54.09).'],
+      links: c.links.map(function (l) { return { href: EOD.COURSE + l, text: l }; })
+    });
+  };
+  window.addEventListener('resize', function () { drawCur(results ? results[+U.$('#trialSel').value || 0] : null); });
+  select('course');
+})();
+</script>
+</body>
+</html>

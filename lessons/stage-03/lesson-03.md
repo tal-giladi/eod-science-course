@@ -171,7 +171,7 @@ Given dud counts from five fictional strike footprints of 2000 items each — 42
 188 — test informally whether a single binomial $p$ is plausible.
 
 *Answer.* Mean 111.2 ⇒ $\hat p=0.0556$; binomial SD $\approx\sqrt{2000\cdot0.0556\cdot0.944}=10.3$.
-The sample SD is ≈ 60 — about six times larger. A common $p$ is implausible; use a
+The sample SD is ≈ 61 — about six times larger. A common $p$ is implausible; use a
 hierarchical/beta-binomial model, and plan survey on the assumption that some footprints are
 much worse than average.
 
@@ -363,7 +363,7 @@ an estimated 1,500 submunitions, 45 years ago. Local reports mention "several" i
 
 1. **Expected contamination.** Field failure rate uncertain: model $p\sim\mathrm{Beta}(3,27)$
    ($\bar p=0.10$). $E[X]=150$; the beta-binomial SD is large (≈ 82), so a 90 % interval runs
-   from a few tens to about 300 items. Plan for the upper range.
+   from about 40 to about 300 items. Plan for the upper range.
 2. **Density.** $\rho\approx150/30\,000=0.005$ m⁻²; any 200 m² patch contains an item with
    probability $1-e^{-1}=0.63$.
 3. **Ageing.** 45 years buried: markings gone, casings corroded, state unknown (03.2 §6) — all

@@ -463,9 +463,9 @@ covered in mud. Common scores, from cheapest:
 
 **Numerical example (energy, $T=1$).** Logits $(6,1,0)$: $E=-\log(e^6+e^1+e^0)=-6.009$. Logits
 $(1,0.9,0.8)$: $E=-2.002$. The second input has higher energy — weaker evidence for *any* class —
-and is ranked more OOD, even though MSP (0.37 vs 0.99) would say the same here; energy separates
-cases where MSP ties (e.g. logits $(6,5,5)$ vs $(1,0,0)$ have similar MSP but very different
-energy).
+and is ranked more OOD; MSP (0.37 vs 0.99) agrees here. Energy separates cases where MSP ties:
+logits $(6,5,5)$ and $(1,0,0)$ have *identical* MSP (0.576) but energies $-6.55$ and $-1.55$ — the
+second input excites no class strongly, the typical signature of an unfamiliar input.
 
 ```python
 def energy_score(logits: np.ndarray, T: float = 1.0) -> np.ndarray:
@@ -747,7 +747,9 @@ sets and an abstention policy, and evaluate the operator workload vs residual-ri
   (auto / declare / human / OOD); report of per-class coverage, workload, hazard auto-clear rate
   with Clopper–Pearson interval.
 - **Constraints:** NumPy only for the core (no conformal libraries); deterministic under seed;
-  vectorised (≤ 1 s for $10^5$ detections).
+  vectorised (≤ 1 s for $10^5$ detections); compute $k=\lceil (n+1)(1-\alpha)\rceil$ robustly
+  against floating-point error (e.g. subtract $10^{-9}$ before the ceiling) so that exact integers
+  are not rounded up.
 - **Expected behaviour:** reproduces the Section 8 numbers with seed 7; hazard auto-clear rate
   ≤ $\alpha_{\text{hazard}}$ within sampling error; raises a clear error or warning when
   $n_k<(1-\alpha_k)/\alpha_k$.

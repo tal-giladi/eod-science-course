@@ -360,10 +360,12 @@ In the square example, add a *false* loop-closure edge claiming pose 2 coincides
 Cauchy kernel, what whitened residual would that edge have at the correct solution, and what
 weight?
 
-*Answer.* Least squares compromises: pose 2 is dragged ~1.4 m toward the origin and the square
-collapses into a distorted shape with large residuals on every edge. At the true solution the
-false edge's residual is ~2.83 m × $\sqrt{400}$ = 56.6σ; Cauchy weight ≈ $1/(1+563) \approx
-0.0018$ — effectively ignored, *provided* the optimiser starts near the truth (from odometry).
+*Answer.* Least squares obeys the false edge: running the code with the extra edge, pose 2 lands
+≈ 0.36 m from the origin (a 2.96 m error), the square folds up, and final $\chi^2$ is ~3600 —
+large residuals on every edge. At the true solution the false edge claims 2.83 m of translation
+and a 180° heading difference that do not exist: whitened residual
+$\sqrt{400\cdot8 + 1600\pi^2} \approx 138\sigma$; Cauchy weight $\approx 3\times10^{-4}$ —
+effectively ignored, *provided* the optimiser starts near the truth (from odometry).
 
 </details>
 
