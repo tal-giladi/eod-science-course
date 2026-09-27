@@ -83,7 +83,7 @@ full specification.
 | Learning objectives | 1. Derive the linear acoustic wave equation from the Euler equations and explain every<br>2. Explain **why large-amplitude waves steepen** into shocks (amplitude-dependent wave speed).<br>3. Derive the **Rankine–Hugoniot** relations for a normal shock in an ideal gas and use them to<br>4. Explain why a shock is **irreversible** (entropy rises) and why that matters for how blast<br>5. Represent all of the above computationally: closed-form functions, and a finite-volume solver |
 | Theory | 1. The governing equations (1D Euler) · 2. Linear acoustics · 3. Why strong waves steepen · 4. The Rankine–Hugoniot jump conditions · 5. Entropy and irreversibility |
 | Visual explanation | mermaid diagram + embedded simulator |
-| Simulation | [blast-physics](sims/blast-physics/index.html), [common](sims/common/index.html) |
+| Simulation | [blast-physics](sims/blast-physics/index.html) |
 | Programming | [p01-blast-wave](projects/p01-blast-wave/README.md) |
 | Reading | 5 selected items (see lesson) |
 | Assessment | 7 questions + hidden-answer exercises; stage gate [assessments/stage-01.md](assessments/stage-01.md) |
@@ -99,7 +99,7 @@ full specification.
 | Learning objectives | 1. Derive pressure reflection and transmission coefficients at a plane interface from continuity of<br>2. Derive (sketch) and use the ideal-gas normal reflection formula<br>3. Explain regular vs Mach reflection, the Mach stem and triple point, and why the reflection<br>4. Derive the peak dynamic pressure $q = \tfrac52 p_s^2/(7p_0+p_s)$ from Rankine–Hugoniot and<br>5. Estimate the **clearing time** of reflected pressure on a finite target and decide whether a<br>6. Implement these relations and cross-check them against Sim D's 2D Euler solver. |
 | Theory | 1. Acoustic impedance, reflection and transmission · 2. Normal reflection of a shock from a rigid wall · 3. Oblique reflection and the Mach stem · 4. Dynamic pressure and stagnation pressure · 5. Drag loading · 6. Clearing: why small targets escape the reflected pressure |
 | Visual explanation | mermaid diagram + embedded simulator |
-| Simulation | [blast-physics](sims/blast-physics/index.html), [common](sims/common/index.html) |
+| Simulation | [blast-physics](sims/blast-physics/index.html) |
 | Programming | [p01-blast-wave](projects/p01-blast-wave/README.md) |
 | Reading | 7 selected items (see lesson) |
 | Assessment | 7 questions + hidden-answer exercises; stage gate [assessments/stage-01.md](assessments/stage-01.md) |
@@ -115,7 +115,7 @@ full specification.
 | Learning objectives | 1. State and prove the **Buckingham Π theorem** (via rank–nullity and unit-change invariance), and<br>2. Derive **Hopkinson–Cranz cube-root scaling** for pressures, times and impulses from similarity,<br>3. Derive **Sachs scaling** for ambient pressure and temperature and apply it to altitude.<br>4. Derive the **Taylor–Sedov** strong-blast radius law $R\propto(Et^2/\rho_0)^{1/5}$ and reproduce<br>5. Identify, with Π groups, when scaling breaks: gravity, material strength and strain rate, |
 | Theory | 1. Dimensions and the dimension matrix · 2. The Buckingham Π theorem · 3. Hopkinson–Cranz (cube-root) scaling · 4. Sachs scaling: non-standard atmospheres · 5. Taylor–Sedov: the strong-blast similarity solution · 6. Where scaling breaks |
 | Visual explanation | mermaid diagram + embedded simulator |
-| Simulation | [blast-physics](sims/blast-physics/index.html), [common](sims/common/index.html) |
+| Simulation | [blast-physics](sims/blast-physics/index.html) |
 | Programming | [p01-blast-wave](projects/p01-blast-wave/README.md) |
 | Reading | 9 selected items (see lesson) |
 | Assessment | 8 questions + hidden-answer exercises; stage gate [assessments/stage-01.md](assessments/stage-01.md) |
@@ -131,7 +131,7 @@ full specification.
 | Learning objectives | 1. Derive the response of an undamped SDOF oscillator to rectangular and triangular pulses and the<br>2. Classify loading as impulsive, dynamic or quasi-static from $\omega t_d$ (< 0.4, between, > 40)<br>3. Derive the **P–I asymptotes** $I^*=x_c\sqrt{km}$ and $P^*=kx_c/2$ from energy balance, and<br>4. Explain Biggs's equivalent-SDOF method (load, mass and load–mass factors) for a real member.<br>5. Model fragment deceleration by drag, show exponential velocity decay with distance, and estimate<br>6. Use the **Mott distribution** as a statistical model of fragment masses and explain how the |
 | Theory | 1. The SDOF oscillator · 2. Response regimes · 3. P–I diagrams from energy balance · 4. Elastic–plastic resistance and ductility · 5. Fragment deceleration by drag · 6. Ballistic range with drag and gravity · 7. Fragment statistics: the Mott distribution · 8. Hazardous fragment density and hazard distance |
 | Visual explanation | mermaid diagram + embedded simulator |
-| Simulation | [blast-physics](sims/blast-physics/index.html), [common](sims/common/index.html) |
+| Simulation | [blast-physics](sims/blast-physics/index.html) |
 | Programming | [p01-blast-wave](projects/p01-blast-wave/README.md) |
 | Reading | 7 selected items (see lesson) |
 | Assessment | 7 questions + hidden-answer exercises; stage gate [assessments/stage-01.md](assessments/stage-01.md) |
@@ -147,7 +147,7 @@ full specification.
 | Learning objectives | 1. Apply Ohm's and Kirchhoff's laws and solve RC transients; relate time constants to filter<br>2. Compute stored energy in capacitors and batteries, and build a robot **power budget** with<br>3. Explain the transduction physics and signal chain of strain gauges, piezoelectric pressure<br>4. State Maxwell's equations, derive the EM wave equation and the **skin depth**, and apply them to<br>5. Use antenna gain, **free-space path loss** and the **Friis equation** to build a radio link<br>6. Quantify Johnson, shot and 1/f noise and SNR, and apply the **Nyquist** sampling theorem.<br>7. Explain, conceptually, why ESD and RF emissions are controlled near ordnance. |
 | Theory | 1. Circuits: Ohm, Kirchhoff and RC transients · 2. Energy storage: capacitors, batteries and robot power budgets · 3. Sensors and transducers · 4. Maxwell's equations at a working level · 5. Skin depth: why metal detectors work and radar does not see through metal · 6. Antennas, propagation and the Friis equation · 7. Noise, SNR and sampling · 8. Electrical hazards to ordnance: ESD and the electromagnetic environment (concepts) |
 | Visual explanation | mermaid diagram + embedded simulator |
-| Simulation | [common](sims/common/index.html), [eod-robot](sims/eod-robot/index.html) |
+| Simulation | [eod-robot](sims/eod-robot/index.html) |
 | Programming | [p02-sensor-noise](projects/p02-sensor-noise/README.md) |
 | Reading | 6 selected items (see lesson) |
 | Assessment | 7 questions + hidden-answer exercises; stage gate [assessments/stage-01.md](assessments/stage-01.md) |
@@ -281,11 +281,27 @@ full specification.
 | Learning objectives | 1. Describe a free-field blast pressure history in terms of arrival time $t_a$, peak incident<br>2. Derive the positive-phase impulse of the Friedlander waveform,<br>3. Compute shock arrival time as $t_a = \int dr/U(r)$ using the Rankine–Hugoniot shock speed and<br>4. Evaluate the Kinney–Graham fits at a given scaled distance, state their validity range and<br>5. Explain the difference between side-on, face-on (reflected) and stagnation measurements and<br>6. Quantify how a ±20 % scatter in an empirical fit propagates into distance and equivalent-yield |
 | Theory | 1. The free-field pressure history · 2. Positive-phase impulse — derivation · 3. The negative phase · 4. Empirical fits: Kinney–Graham and Kingery–Bulmash · 5. Arrival time as an integral · 6. Dynamic and reflected pressure at the gauge · 7. Measurement: what a gauge actually sees · 8. How wrong are the fits? Propagating uncertainty |
 | Visual explanation | mermaid diagram + embedded simulator |
-| Simulation | [blast-physics](sims/blast-physics/index.html), [common](sims/common/index.html) |
+| Simulation | [blast-physics](sims/blast-physics/index.html) |
 | Programming | [p01-blast-wave](projects/p01-blast-wave/README.md) |
 | Reading | 7 selected items (see lesson) |
 | Assessment | 8 questions + hidden-answer exercises; stage gate [assessments/stage-04.md](assessments/stage-04.md) |
 | Next | [04.2 Distance, reflection, confinement & urban environments](lessons/stage-04/lesson-02.md). |
+
+### [04.2 · Distance, reflection, confinement & urban environments](lessons/stage-04/lesson-02.md)
+
+| Field | Specification |
+|---|---|
+| Prerequisites | [04.1 Anatomy of a blast wave](lessons/stage-04/lesson-01.md) · [01.4 Reflection, transmission & dynamic pressure](lessons/stage-01/lesson-04.md) (normal/oblique reflection, Mach stem) · [01.5 Scaling laws](lessons/stage-01/lesson-05.md) · [01.2 Gases & thermodynamics](lessons/stage-01/lesson-02.md) (first law, $c_v$, $\gamma$). **Estimated time** 6 h (3 h theory · 2 h simulator · 1 h programming) |
+| Estimated time | 6 h (3 h theory · 2 h simulator · 1 h programming) |
+| Level | Intermediate |
+| Learning objectives | 1. Use scaled distance to convert a pressure criterion into a range for any yield, and state how<br>2. Justify the ground-reflection (surface-burst) factor with an image-source argument and explain<br>3. Describe regular vs Mach reflection, the triple point and why oblique loads can exceed<br>4. Derive the quasi-static pressure of energy released in a closed volume,<br>5. Explain channelling and shielding in street canyons, bound them with a simple geometric<br>6. Design and interpret probe experiments in Sim D's wall, corner, street and room scenes. |
+| Theory | 1. Scaled distance in practice · 2. Ground reflection and the surface-burst factor · 3. Oblique and Mach reflection · 4. Reflection from finite targets: clearing · 5. Confined (internal) blast: two phases · 6. Venting: how the gas pressure decays · 7. Urban environments: channelling and shielding |
+| Visual explanation | mermaid diagram + embedded simulator |
+| Simulation | [blast-physics](sims/blast-physics/index.html) |
+| Programming | [p01-blast-wave](projects/p01-blast-wave/README.md) |
+| Reading | 6 selected items (see lesson) |
+| Assessment | 8 questions + hidden-answer exercises; stage gate [assessments/stage-04.md](assessments/stage-04.md) |
+| Next | [04.3 Structural effects](lessons/stage-04/lesson-03.md) and [04.4 Injury, fragmentation & secondary hazards](lessons/stage-04/lesson-04.md); later [08.2 Reconstruction](lessons/stage-08/lesson-02.md). |
 
 ## Stage 5 · Detection
 

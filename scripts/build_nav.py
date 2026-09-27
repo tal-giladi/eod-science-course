@@ -106,7 +106,7 @@ def module_specs() -> str:
             card = re.search(r'<div class="module-card">(.*?)</div>', t, re.S)
             card = card.group(1) if card else ""
             theory = [re.sub(r"^#+\s*", "", l) for l in section(t, "Theory").splitlines() if l.startswith("### ")]
-            sims = sorted(set(re.findall(r"sims/([a-z-]+)/", t)))
+            sims = sorted(set(re.findall(r"sims/([a-z-]+)/", t)) - {"common"})
             projs = sorted(set(re.findall(r"projects/(p\d\d-[a-z-]+)/", t)))
             objectives = [l.strip() for l in section(t, "Learning objectives").splitlines() if re.match(r"\s*\d+\.", l)]
             reading = [l for l in section(t, "Reading").splitlines() if l.strip().startswith(("-", "*", "1", "2", "3", "4", "5", "6"))]

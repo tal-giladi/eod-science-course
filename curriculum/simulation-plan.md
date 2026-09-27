@@ -37,5 +37,5 @@ stand-alone.
 D (physics core) → I → J → C → H → B → G → A → F → E. Each simulator is committed separately.
 
 ## Python-side simulations
-Programming projects (see [project-plan.md](project-plan.md)) are the "engine room" versions of
+Programming projects (see [project-plan.md](curriculum/project-plan.md)) are the "engine room" versions of
 the browser sims: P01 ↔ D, P02/P03 ↔ C, P04–P08 ↔ B/G, P10 ↔ A/E, P11 ↔ B, P12 ↔ F.

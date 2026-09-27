@@ -2,14 +2,14 @@
 
 `plan.md` §1 requires the curriculum to come from research on how EOD professionals are actually
 trained, not from general knowledge. This page is the bridge between the raw research notes in
-[`research/`](../research/) and the [course outline](course-outline.md).
+[`research/`](research/) and the [course outline](curriculum/course-outline.md).
 
 | Research note | Content |
 |---|---|
-| [01 · Training pathways](../research/01-training-pathways.md) | US joint-service school, US Army, FBI Hazardous Devices School & NBSCAB, UK DEMS / ATO, NATO EOD COE & AJP-3.18, IMAS 09.30 + T&EP 09.30/09.31 competency standards, IATG 01.90, police pathways (Canada, Israel, Australia), IABTI, universities (Missouri S&T, New Mexico Tech, Cranfield) |
-| [02 · Physics, chemistry & blast sources](../research/02-physics-chemistry-blast-sources.md) | textbooks, government design manuals, empirical blast fits, detonation theory |
-| [03 · Detection & forensics sources](../research/03-detection-forensics-sources.md) | detection technologies, T&E, post-blast investigation, case-study sources |
-| [04 · Robotics & AI sources](../research/04-robotics-ai-sources.md) | EOD robot history, teleoperation/HRI, free robotics textbooks, mine-action ML, NIST/ASTM response-robot test methods |
+| [01 · Training pathways](research/01-training-pathways.md) | US joint-service school, US Army, FBI Hazardous Devices School & NBSCAB, UK DEMS / ATO, NATO EOD COE & AJP-3.18, IMAS 09.30 + T&EP 09.30/09.31 competency standards, IATG 01.90, police pathways (Canada, Israel, Australia), IABTI, universities (Missouri S&T, New Mexico Tech, Cranfield) |
+| [02 · Physics, chemistry & blast sources](research/02-physics-chemistry-blast-sources.md) | textbooks, government design manuals, empirical blast fits, detonation theory |
+| [03 · Detection & forensics sources](research/03-detection-forensics-sources.md) | detection technologies, T&E, post-blast investigation, case-study sources |
+| [04 · Robotics & AI sources](research/04-robotics-ai-sources.md) | EOD robot history, teleoperation/HRI, free robotics textbooks, mine-action ML, NIST/ASTM response-robot test methods |
 
 ## 1. Common knowledge domains → where they live in this course
 
@@ -36,7 +36,7 @@ domains. The mapping below is the coverage check required by `plan.md` §24.
 The clearest public ladder is **IMAS 09.30 / T&EP 09.30**: EOD Level 1 → 2 → 3 → 3+ specialist
 modules, with knowledge items escalating from *awareness* to *understand* to *explain the full
 cycle*. The course's Beginner / Intermediate / Advanced / Expert labels mirror that escalation
-(see the level table in the [outline](course-outline.md)), adapted so that "Expert" means
+(see the level table in the [outline](curriculum/course-outline.md)), adapted so that "Expert" means
 engineering and research depth (autonomy, trustworthy AI, capstones) rather than operational
 authority.
 

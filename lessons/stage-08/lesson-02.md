@@ -499,7 +499,7 @@ for i in range(n_cam):
         if i > 0: row[n_ev + i - 1] = 1                          # o_0 = 0 fixes the gauge
         rows.append(row); rhs.append(tau[i, k] - d[i, k] / c_s)
 sol, *_ = np.linalg.lstsq(np.array(rows), np.array(rhs), rcond=None)
-print(sol[:n_ev].round(3), sol[n_ev:].round(3))   # events ~[0.0 12.54 47.2]; offsets ~[3.2 -1.89 0.63]
+print(sol[:n_ev].round(3), sol[n_ev:].round(3))   # events [0.004 12.534 47.216]; offsets [3.183 -1.894 0.646]
 ```
 
 The offsets are recovered to within ≈ 0.03 s from 20 ms onset noise — better than one video frame

@@ -35,6 +35,7 @@
 - **4 · Blast effects**
   - [Stage 4 overview](lessons/stage-04/README.md)
   - [04.1 · Anatomy of a blast wave](lessons/stage-04/lesson-01.md)
+  - [04.2 · Distance, reflection, confinement & urban environments](lessons/stage-04/lesson-02.md)
 - **5 · Detection**
   - [Stage 5 overview](lessons/stage-05/README.md)
   - [05.1 · Detection theory: ROC, base rates, costs and test & evaluation](lessons/stage-05/lesson-01.md)
@@ -63,6 +64,7 @@
   - [07.2 · Incident management: the conceptual framework](lessons/stage-07/lesson-02.md)
   - [Stage 7 gate assessment](assessments/stage-07.md)
 - **8 · Forensics & post-blast investigation**
+  - [Stage 8 overview](lessons/stage-08/README.md)
   - [08.1 · The post-blast scene](lessons/stage-08/lesson-01.md)
   - [08.2 · Reconstruction as an inverse problem](lessons/stage-08/lesson-02.md)
   - [08.3 · Laboratory & digital forensics](lessons/stage-08/lesson-03.md)

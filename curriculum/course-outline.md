@@ -2,15 +2,15 @@
 
 This is deliverable **1 (complete curriculum)** and **2 (dependency graph)** from `plan.md` §23.
 The per-module specifications (objectives, theory, reading, visual, exercise, simulation, code,
-assessment, time, next) are in [module-specs.md](module-specs.md); how the structure was derived
-from real training pathways is in [research-synthesis.md](research-synthesis.md).
+assessment, time, next) are in [module-specs.md](curriculum/module-specs.md); how the structure was derived
+from real training pathways is in [research-synthesis.md](curriculum/research-synthesis.md).
 
 ## Design principles
 
 1. **Derived, not invented.** The knowledge domains come from comparing public descriptions of
    military EOD schools, police bomb-technician certification, humanitarian mine-action
    standards (IMAS/IATG), NATO EOD doctrine and university explosives/blast/forensics programmes
-   (see [research-synthesis.md](research-synthesis.md)). Where those pathways teach
+   (see [research-synthesis.md](curriculum/research-synthesis.md)). Where those pathways teach
    *operational* skills (render-safe, demolition, live ordnance handling), this course teaches
    the **science, engineering and decision framework underneath** instead.
 2. **Dependency-aware.** Every lesson lists hard prerequisites; the graph below is acyclic and
@@ -21,7 +21,7 @@ from real training pathways is in [research-synthesis.md](research-synthesis.md)
    the deepest sections because they map onto the learner's background and onto where the
    field is changing fastest.
 5. **Hard safety boundary.** No formulations, device construction, render-safe or defeat
-   procedures, no actionable initiation/timing/wiring content. See [CLAUDE.md](../CLAUDE.md).
+   procedures, no actionable initiation/timing/wiring content. See [CLAUDE.md](CLAUDE.md).
 
 ## Stage map
 
@@ -118,7 +118,7 @@ stage whose concepts they exercise.
 ### Capstones
 C1 Autonomous EOD robot mission (robotics + CV + fusion + localization + planning + uncertainty
 + HITL + visualisation), C2 Humanitarian survey optimiser, C3 Post-blast digital reconstruction
-lab, C4 Decision-support system with calibrated risk. See [capstones](../capstones/index.md).
+lab, C4 Decision-support system with calibrated risk. See [capstones](capstones/index.md).
 
 ## Dependency graph
 
