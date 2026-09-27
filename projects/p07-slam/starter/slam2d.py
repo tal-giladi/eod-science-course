@@ -1,4 +1,6 @@
-"""slam2d -- a small, readable 2D SLAM toolkit (Project P07).
+"""[STARTER -- every function that raises NotImplementedError is yours to write; helpers that are implemented are given.]
+
+slam2d -- a small, readable 2D SLAM toolkit (Project P07).
 
 Components
 ----------
@@ -293,13 +295,7 @@ class OccupancyGrid:
         says the whole ray is free). Cells beyond the end are untouched. Out-of-bounds cells are
         skipped. Log-odds are clamped to [l_min, l_max] after each addition. Prior log-odds is 0.
         """
-        ray = bresenham(*origin_cell, *end_cell)
-        for (i, j) in ray[:-1]:
-            if self.in_bounds(i, j):
-                self.L[j, i] = np.clip(self.L[j, i] + self.l_free, self.l_min, self.l_max)
-        i, j = ray[-1]
-        if self.in_bounds(i, j):
-            self.L[j, i] = np.clip(self.L[j, i] + (self.l_occ if hit else self.l_free), self.l_min, self.l_max)
+        raise NotImplementedError("TODO: implement OccupancyGrid.integrate_beam")
 
     def integrate_scan(self, pose: np.ndarray, ranges: np.ndarray, angles: np.ndarray,
                        max_range: float = 12.0) -> None:
@@ -308,12 +304,7 @@ class OccupancyGrid:
         A beam with ``range >= max_range`` is a no-return: mark the ray free up to ``max_range``
         without an occupied end cell. Beam end points are ``pose[:2] + r * (cos, sin)(theta+angle)``.
         """
-        o = self.world_to_cell(pose[:2])
-        for r, a in zip(ranges, angles):
-            hit = r < max_range - 1e-9
-            rr = min(r, max_range)
-            end = pose[:2] + rr * np.array([np.cos(pose[2] + a), np.sin(pose[2] + a)])
-            self.integrate_beam(o, self.world_to_cell(end), hit)
+        raise NotImplementedError("TODO: implement OccupancyGrid.integrate_scan")
 
 
 # ---------------------------------------------------------------------------------------------
@@ -329,14 +320,7 @@ def rigid_align(P: np.ndarray, Q: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     The determinant correction guarantees a proper rotation (det R = +1), never a reflection.
     Works for any dimension d; P, Q are (N, d) with N >= d.
     """
-    P, Q = np.asarray(P, float), np.asarray(Q, float)
-    pc, qc = P.mean(0), Q.mean(0)
-    H = (P - pc).T @ (Q - qc)
-    U, _, Vt = np.linalg.svd(H)
-    D = np.eye(P.shape[1])
-    D[-1, -1] = np.sign(np.linalg.det(Vt.T @ U.T)) or 1.0
-    R = Vt.T @ D @ U.T
-    return R, qc - R @ pc
+    raise NotImplementedError("TODO: implement rigid_align")
 
 
 def icp(source: np.ndarray, target: np.ndarray, R0: np.ndarray | None = None,
@@ -351,26 +335,7 @@ def icp(source: np.ndarray, target: np.ndarray, R0: np.ndarray | None = None,
 
     Returns ``(R, t, info)`` with ``info = {"iterations": int, "rmse": float, "converged": bool}``.
     """
-    source, target = np.asarray(source, float), np.asarray(target, float)
-    d = source.shape[1]
-    R = np.eye(d) if R0 is None else np.array(R0, float)
-    t = np.zeros(d) if t0 is None else np.array(t0, float)
-    tree = cKDTree(target)
-    prev, converged, k, err = np.inf, False, 0, np.inf
-    for k in range(1, max_iter + 1):
-        src = source @ R.T + t
-        dist, idx = tree.query(src)
-        mask = np.ones(len(src), bool) if reject_dist is None else dist < reject_dist
-        if mask.sum() < d + 1:
-            break
-        dR, dt = rigid_align(src[mask], target[idx[mask]])
-        R, t = dR @ R, dR @ t + dt
-        err = float(np.mean(dist[mask] ** 2))
-        if abs(prev - err) < tol:
-            converged = True
-            break
-        prev = err
-    return R, t, {"iterations": k, "rmse": float(np.sqrt(err)), "converged": converged}
+    raise NotImplementedError("TODO: implement icp")
 
 
 # ---------------------------------------------------------------------------------------------
@@ -417,15 +382,7 @@ class EKFSLAM:
         ``Sigma_rl <- G Sigma_rl`` (O(n) work); landmark-landmark blocks are unchanged.
         G = d(motion)/d(pose), V = d(motion)/d(u), M = control noise covariance.
         """
-        x = self.mu[:3]
-        v, th = u[0], x[2]
-        G = np.array([[1, 0, -v * dt * np.sin(th)], [0, 1, v * dt * np.cos(th)], [0, 0, 1]])
-        V = np.array([[dt * np.cos(th), 0], [dt * np.sin(th), 0], [0, dt]])
-        self.mu[:3] = unicycle_step(x, u, dt)
-        S = self.Sigma
-        S[:3, :3] = G @ S[:3, :3] @ G.T + V @ self.M @ V.T
-        S[:3, 3:] = G @ S[:3, 3:]
-        S[3:, :3] = S[:3, 3:].T
+        raise NotImplementedError("TODO: implement EKFSLAM.predict")
 
     def update(self, j: int, z: np.ndarray) -> None:
         """Process one range-bearing measurement ``z = (r, b)`` of landmark ``j``.
@@ -436,40 +393,7 @@ class EKFSLAM:
         (non-zero only in the robot and landmark-j columns), innovation with wrapped bearing,
         ``K = Sigma H^T S^-1`` and the Joseph form ``(I-KH) Sigma (I-KH)^T + K R K^T``.
         """
-        r, b = float(z[0]), float(z[1])
-        x = self.mu[:3]
-        s = slice(3 + 2 * j, 5 + 2 * j)
-        if not self.seen[j]:
-            c, sn = np.cos(x[2] + b), np.sin(x[2] + b)
-            self.mu[s] = x[:2] + r * np.array([c, sn])
-            Gp = np.array([[1, 0, -r * sn], [0, 1, r * c]])
-            Gz = np.array([[c, -r * sn], [sn, r * c]])
-            S = self.Sigma
-            S[s, s] = Gp @ S[:3, :3] @ Gp.T + Gz @ self.R @ Gz.T
-            S[s, :3] = Gp @ S[:3, :3]
-            S[:3, s] = S[s, :3].T
-            others = np.r_[3:s.start, s.stop:len(self.mu)]
-            S[s, others] = Gp @ S[:3, others]
-            S[others, s] = S[s, others].T
-            self.seen[j] = True
-            return
-        d = self.mu[s] - x[:2]
-        q = d @ d
-        sq = np.sqrt(q)
-        zhat = np.array([sq, wrap(np.arctan2(d[1], d[0]) - x[2])])
-        n = len(self.mu)
-        H = np.zeros((2, n))
-        H[:, :3] = np.array([[-d[0] / sq, -d[1] / sq, 0], [d[1] / q, -d[0] / q, -1]])
-        H[:, s] = np.array([[d[0] / sq, d[1] / sq], [-d[1] / q, d[0] / q]])
-        nu = np.array([r - zhat[0], wrap(b - zhat[1])])
-        Sg = self.Sigma
-        Sinn = H @ Sg @ H.T + self.R
-        K = Sg @ H.T @ np.linalg.inv(Sinn)
-        self.mu = self.mu + K @ nu
-        self.mu[2] = wrap(self.mu[2])
-        IKH = np.eye(n) - K @ H
-        self.Sigma = IKH @ Sg @ IKH.T + K @ self.R @ K.T
-        self.Sigma = 0.5 * (self.Sigma + self.Sigma.T)
+        raise NotImplementedError("TODO: implement EKFSLAM.update")
 
 
 def run_ekf_slam(run: dict, n_landmarks: int) -> tuple[EKFSLAM, dict]:
@@ -500,16 +424,7 @@ def edge_error(xi: np.ndarray, xj: np.ndarray, z: np.ndarray) -> tuple[np.ndarra
     ``e = [R_z^T (R_i^T (t_j - t_i) - t_z) ; wrap(th_j - th_i - th_z)]``,
     ``A = de/dx_i`` and ``B = de/dx_j`` (both 3x3), as in lesson 06.7 section 4.
     """
-    Ri, Rz, dt = rot2(xi[2]), rot2(z[2]), xj[:2] - xi[:2]
-    e = np.r_[Rz.T @ (Ri.T @ dt - z[:2]), wrap(xj[2] - xi[2] - z[2])]
-    dRiT = np.array([[-np.sin(xi[2]), np.cos(xi[2])], [-np.cos(xi[2]), -np.sin(xi[2])]])
-    A, B = np.zeros((3, 3)), np.zeros((3, 3))
-    A[:2, :2] = -Rz.T @ Ri.T
-    A[:2, 2] = Rz.T @ dRiT @ dt
-    A[2, 2] = -1.0
-    B[:2, :2] = Rz.T @ Ri.T
-    B[2, 2] = 1.0
-    return e, A, B
+    raise NotImplementedError("TODO: implement edge_error")
 
 
 def chi2(X: np.ndarray, edges: list) -> float:
@@ -530,28 +445,7 @@ def build_normal_equations(X: np.ndarray, edges: list, anchor: int = 0,
     (shape 3n x 3n) and dense ``b``. Fix the gauge freedom by adding ``anchor_weight * I`` to the
     diagonal block of node ``anchor``.
     """
-    n = len(X)
-    rows, cols, vals = [], [], []
-    b = np.zeros(3 * n)
-    blk_r, blk_c = np.meshgrid(np.arange(3), np.arange(3), indexing="ij")
-
-    def add(bi, bj, M):
-        rows.append((3 * bi + blk_r).ravel())
-        cols.append((3 * bj + blk_c).ravel())
-        vals.append(M.ravel())
-
-    for i, j, z, Om in edges:
-        e, A, B = edge_error(X[i], X[j], z)
-        add(i, i, A.T @ Om @ A)
-        add(i, j, A.T @ Om @ B)
-        add(j, i, B.T @ Om @ A)
-        add(j, j, B.T @ Om @ B)
-        b[3 * i:3 * i + 3] += A.T @ Om @ e
-        b[3 * j:3 * j + 3] += B.T @ Om @ e
-    add(anchor, anchor, anchor_weight * np.eye(3))
-    H = sp.coo_matrix((np.concatenate(vals), (np.concatenate(rows), np.concatenate(cols))),
-                      shape=(3 * n, 3 * n)).tocsc()
-    return H, b
+    raise NotImplementedError("TODO: implement build_normal_equations")
 
 
 def optimize_pose_graph(X0: np.ndarray, edges: list, iters: int = 20, tol: float = 1e-9,
@@ -562,17 +456,7 @@ def optimize_pose_graph(X0: np.ndarray, edges: list, iters: int = 20, tol: float
     ``X += dx.reshape(n, 3)``, wrap angles; stop when ``max |dx| < tol``.
     Returns the optimised poses and the chi^2 history (initial value first, one per iteration).
     """
-    X = np.array(X0, float).copy()
-    hist = [chi2(X, edges)]
-    for _ in range(iters):
-        H, b = build_normal_equations(X, edges, anchor=anchor)
-        dx = spla.spsolve(H, -b)
-        X += dx.reshape(-1, 3)
-        X[:, 2] = wrap(X[:, 2])
-        hist.append(chi2(X, edges))
-        if np.abs(dx).max() < tol:
-            break
-    return X, hist
+    raise NotImplementedError("TODO: implement optimize_pose_graph")
 
 
 # ---------------------------------------------------------------------------------------------

@@ -95,9 +95,8 @@ def test_rigid_align_exact_and_proper_rotation():
 
 def test_icp_recovers_known_rigid_transform():
     room = mod.make_room()
-    r, a = mod.simulate_scan(np.r_[2.0, 1.5, 0.0], room["segments"], n_beams=720)
-    target = mod.scan_to_points(r, a)
-    th, t = np.radians(8.0), np.array([0.25, -0.15])
+    target = mod.sample_walls(room["segments"], 0.03, np.random.default_rng(0)) - [2.0, 1.5]
+    th, t = np.radians(12.0), np.array([0.3, -0.2])
     R_true = mod.rot2(th)
     # source = target moved by the inverse transform, shuffled, so that R_true*src + t = target
     src = (target - t) @ R_true
