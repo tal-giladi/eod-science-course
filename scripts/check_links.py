@@ -19,7 +19,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 MD_LINK = re.compile(r"(?<!\!)\[[^\]]*\]\(([^)\s]+)(?:\s+'[^']*')?\)")
 HTML_REF = re.compile(r"(?:href|src)=\"([^\"]+)\"")
-URL = re.compile(r"https?://[^\s)<>\"'`|\]]+")
+URL = re.compile(r"https?://(?:[^\s()<>\"'`|\]]|\([^\s()<>]*\))+")
 SKIP_DIRS = {".git", "node_modules", ".claude", "research"}
 
 
@@ -105,7 +105,7 @@ if __name__ == "__main__":
         blocked = {u: s for u, s in res.items() if s in ("HTTP 403", "HTTP 429", "HTTP 401", "HTTP 405")}
         broken = {u: s for u, s in res.items() if u not in ok and u not in blocked}
         lines = ["# External link report", "", f"Checked {len(res)} URLs: {len(ok)} OK, {len(blocked)} refused automated access "
-                 "(403/429/401/405 — usually bot protection; verify in a browser), {len(broken)} failing.", ""]
+                 f"(403/429/401/405 — usually bot protection; verify in a browser), {len(broken)} failing.", ""]
         if broken:
             lines += ["## Failing", "", "| URL | Result |", "|---|---|"] + [f"| {u} | {s} |" for u, s in sorted(broken.items())] + [""]
         if blocked:

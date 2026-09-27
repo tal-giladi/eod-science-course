@@ -104,14 +104,15 @@ def rodrigues(axis, angle: float) -> np.ndarray:
 def log_so3(R: np.ndarray) -> np.ndarray:
     """Matrix log of SO(3): returns rotation vector w with |w| in [0, pi] and exp_so3(w) == R.
 
-    Robust in the three regimes: theta ~ 0 (first-order formula), generic, and theta ~ pi (where
+    Compute theta with ``atan2(|vee(R - R^T)|/2, (tr R - 1)/2)``: ``arccos`` alone loses half the
+    digits near pi. Robust in three regimes: theta ~ 0 (first-order formula), generic, and theta ~ pi (where
     ``R - R^T`` vanishes and the axis must come from the symmetric part ``(R + R^T)/2 - cos(th) I
     = (1 - cos th) a a^T``, with the sign taken from ``vee(R - R^T)``).
     """
     R = np.asarray(R, float)
     c = np.clip((np.trace(R) - 1) / 2, -1.0, 1.0)
-    th = np.arccos(c)
     s = 0.5 * vee(R - R.T)                       # = sin(th) * axis
+    th = np.arctan2(np.linalg.norm(s), c)        # accurate near 0 and near pi (arccos is not)
     if th < 1e-6:
         return s * (1 + th**2 / 6)
     if th < np.pi - 1e-3:
@@ -281,14 +282,15 @@ class IKResult:
 
 def ik_dls(target, q0=None, task: str = "position", lam: float = 0.05, tol: float = 1e-6,
            max_iter: int = 300, limits: np.ndarray | None = JOINT_LIMITS, restarts: int = 5,
-           seed: int = 0) -> IKResult:
+           seed: int = 0, max_step: float = 0.3) -> IKResult:
     """Damped-least-squares IK with joint limits.
 
     ``task="position"``: target is a 3-vector tool position; error ``e = p_d - p(q)`` and the
     3x5 :func:`point_jacobian`. ``task="pose"``: target is a 4x4 pose; error twist
     ``V_e = Ad(T) log_se3(T^{-1} T_d)`` and :func:`jacobian_space` (only poses a 5-DOF arm can
-    reach will converge). Step: ``dq = J^T (J J^T + lam^2 I)^{-1} e``; after every step clip ``q`` to
-    ``limits``. Success iff ``|e| < tol``. If a run fails, retry from up to ``restarts`` random
+    reach will converge). Step: ``dq = J^T (J J^T + lam^2 I)^{-1} e``, scaled down so that
+    ``max |dq| <= max_step`` (a trust region: far targets otherwise fling the arm into its limits);
+    after every step clip ``q`` to ``limits``. Success iff ``|e| < tol``. If a run fails, retry from up to ``restarts`` random
     configurations inside the limits (deterministic ``seed``) and return the best result.
     Unreachable targets must return ``success=False`` together with the least-error configuration.
     """
@@ -312,6 +314,9 @@ def ik_dls(target, q0=None, task: str = "position", lam: float = 0.05, tol: floa
                 break
             J = point_jacobian(q) if task == "position" else jacobian_space(q)
             dq = J.T @ np.linalg.solve(J @ J.T + lam**2 * np.eye(len(e)), e)
+            big = np.abs(dq).max()
+            if big > max_step:
+                dq *= max_step / big
             q = np.clip(q + dq, lo, hi)
         n = float(np.linalg.norm(err(q)))
         res = IKResult(q, n < tol, k, n)

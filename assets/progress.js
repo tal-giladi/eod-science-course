@@ -93,7 +93,13 @@
           (e.code ? '✓' : '') + '</td><td>' + (e.confidence || '') + '</td></tr>';
       });
     });
-    html += '</tbody></table>' +
+    html += '</tbody></table>';
+    var sims = [];
+    try { sims = JSON.parse(localStorage.getItem('eod-sim-results-v1') || '[]'); } catch (e) {}
+    html += '<h3>Simulator debriefs</h3>' + (sims.length ? '<table><thead><tr><th>Date</th><th>Simulator</th><th>Level</th><th>Seed</th><th>Score</th></tr></thead><tbody>' +
+      sims.slice(-40).reverse().map(function (r) {
+        return '<tr><td>' + String(r.date).slice(0, 10) + '</td><td>' + r.sim + '</td><td>' + (r.level || '') + '</td><td>' + r.seed + '</td><td>' + (r.score === null ? '—' : r.score) + '</td></tr>';
+      }).join('') + '</tbody></table>' : '<p>No simulator debriefs recorded yet in this browser.</p>') +
       '<p><button id="eod-export">Export progress JSON</button> <button id="eod-import">Import progress JSON</button></p>';
     el.innerHTML = html;
     document.getElementById('eod-export').onclick = function () {
