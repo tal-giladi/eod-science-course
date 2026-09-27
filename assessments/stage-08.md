@@ -25,8 +25,8 @@ give, and how long is one full pass with 6 searchers at 0.1 m/s and 1 m spacing?
 
 (a) Water-filling gives $e \approx (3.62, 9.25, 7.13)$ h; zone PODs contribute $(0.493, 0.267,
 0.070)$ → overall **0.831**. (b) Area-proportional: $(0.77, 3.85, 15.38)$ h → overall **0.603**.
-(c) $1.5\times44 = 66$ m; $A=\pi\cdot66^2 = 13\,685$ m²; track length 13 685 m at
-$6\times0.1 = 0.6$ m²/s coverage rate (per metre of spacing) → 22 808 s ≈ **6.3 h**.
+(c) $1.5\times44 = 66$ m; $A=\pi\cdot66^2 = 13\,685$ m²; track length 13 685 m covered by
+six searchers walking a combined $6\times0.1 = 0.6$ m/s → 22 808 s ≈ **6.3 h**.
 
 </details>
 

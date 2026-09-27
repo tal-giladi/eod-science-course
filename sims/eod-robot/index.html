@@ -41,6 +41,14 @@
     <div id="tasks"></div>
     <h2 style="margin-top:10px">Telemetry</h2>
     <div class="kv" id="tele"></div>
+    <details style="margin-top:8px"><summary class="hint" style="cursor:pointer">experiment settings (restart)</summary>
+      <div class="row"><label>round-trip latency</label><select id="xLat"><option value="">level default</option><option>0</option><option>250</option><option>500</option><option>1000</option><option>1500</option></select></div>
+      <div class="row"><label>jitter ±%</label><select id="xJit"><option value="">default</option><option>0</option><option>30</option></select>
+        <label>extra loss %</label><select id="xLoss"><option value="">default</option><option>0</option><option>5</option><option>10</option></select></div>
+      <div class="row"><label><input type="checkbox" id="xCold"> cold battery (60 % capacity)</label></div>
+      <div class="row"><button id="xApply">apply &amp; restart</button></div>
+    </details>
+    <div class="row"><label><input type="checkbox" id="predict"> predictive display (ghost pose on map)</label></div>
     <h2 style="margin-top:10px">Loss-of-comms behaviour</h2>
     <select id="lcb"><option value="stop">stop in place (default)</option><option value="retro">retro-traverse to last good link</option><option value="continue">continue last command (!)</option></select>
     <h2 style="margin-top:10px">Operator log</h2>
@@ -66,6 +74,11 @@
     Advanced:     { lat: 800,  jitter: 150, loss: 0.05, dark: false, noise: 0.10, odo: 0.04, battery: 55,  time: 420, puck: true,  thermal: true },
     Expert:       { lat: 1400, jitter: 300, loss: 0.08, dark: true,  noise: 0.14, odo: 0.06, battery: 45,  time: 360, puck: true,  thermal: true }
   }[level];
+  // experiment overrides via URL (lessons 06.5, 06.9)
+  if (U.param('lat')) { LV.lat = +U.param('lat'); LV.jitter = Math.round(LV.lat * (U.param('jit') ? +U.param('jit') / 100 : 0.15)); }
+  else if (U.param('jit')) LV.jitter = Math.round(LV.lat * +U.param('jit') / 100);
+  if (U.param('loss')) LV.loss = +U.param('loss') / 100;
+  if (U.param('cold') === '1') LV.battery *= 0.6;
 
   // ---------------------------------------------------------------- world (metres)
   var WW = 60, WH = 40;
@@ -311,6 +324,17 @@
   function thermCol(t) { t = U.clamp(t, 0, 1); var r = Math.round(255 * U.clamp(t * 1.8 - 0.3, 0, 1)), g = Math.round(255 * U.clamp(t * 1.8 - 1, 0, 1)), b = Math.round(255 * U.clamp(0.6 - t, 0, 1) + 60 * t); return 'rgb(' + r + ',' + g + ',' + b + ')'; }
 
   // ---------------------------------------------------------------- map & arm
+  (function () {
+    var m = { xLat: 'lat', xJit: 'jit', xLoss: 'loss' };
+    Object.keys(m).forEach(function (id) { U.$('#' + id).value = U.param(m[id], ''); });
+    U.$('#xCold').checked = U.param('cold') === '1';
+    U.$('#xApply').onclick = function () {
+      var q = '?level=' + level + '&seed=' + seed;
+      Object.keys(m).forEach(function (id) { if (U.$('#' + id).value !== '') q += '&' + m[id] + '=' + U.$('#' + id).value; });
+      if (U.$('#xCold').checked) q += '&cold=1'; if (U.param('embed')) q += '&embed=1';
+      location.href = location.pathname + q;
+    };
+  })();
   function renderMap() {
     var st = delayed(), cv = U.$('#map'), g = EOD.hidpi(cv, Math.round((cv.clientWidth || 400) * WH / WW)), ctx = g.ctx, s = g.w / WW;
     ctx.fillStyle = '#0b1017'; ctx.fillRect(0, 0, g.w, g.h);
@@ -323,6 +347,11 @@
     ctx.fillStyle = '#22d3ee'; ctx.fillRect(OCU.x * s - 4, OCU.y * s - 4, 8, 8); ctx.fillText('OCU', OCU.x * s + 6, OCU.y * s + 3);
     if (rob.puckPlaced) { ctx.fillStyle = '#22d3ee'; ctx.beginPath(); ctx.arc(rob.puckPlaced.x * s, rob.puckPlaced.y * s, 3, 0, 7); ctx.fill(); }
     var e = st.est, sd = Math.sqrt(e.P) * 3;
+    if (U.$('#predict').checked) { // dead-reckon the operator's current command over the round-trip delay
+      var T = LV.lat / 1000, pv = ((keys.w ? 1 : 0) - (keys.s ? 1 : 0)) * 1.1, pw = ((keys.a ? 1 : 0) - (keys.d ? 1 : 0)) * 0.9, gth = e.th + pw * T;
+      var gx = e.x + pv * T * Math.cos((e.th + gth) / 2), gy = e.y + pv * T * Math.sin((e.th + gth) / 2);
+      ctx.save(); ctx.translate(gx * s, gy * s); ctx.rotate(gth); ctx.strokeStyle = '#e6edf3'; ctx.setLineDash([3, 2]); ctx.strokeRect(-0.35 * s, -0.25 * s, 0.7 * s, 0.5 * s); ctx.setLineDash([]); ctx.restore();
+    }
     ctx.strokeStyle = 'rgba(250,204,21,.8)'; ctx.beginPath(); ctx.arc(e.x * s, e.y * s, Math.max(3, sd * s), 0, 2 * Math.PI); ctx.stroke();
     ctx.save(); ctx.translate(e.x * s, e.y * s); ctx.rotate(e.th);
     ctx.fillStyle = '#fb923c'; ctx.fillRect(-0.35 * s, -0.25 * s, 0.7 * s, 0.5 * s);

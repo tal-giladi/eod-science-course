@@ -1,4 +1,4 @@
-"""robotsim2d — a small, deterministic 2D mobile-robot simulator (Project P05, reference solution).
+"""robotsim2d — a small, deterministic 2D mobile-robot simulator (Project P05, starter).
 
 Coordinates: world frame x right, y up, metres; heading theta in radians, counter-clockwise from +x.
 Body frame: x forward, y left. A pose is a length-3 array (x, y, theta).
@@ -64,42 +64,17 @@ def point_in_polygon(p, poly) -> bool:
 
     p: (2,) point; poly: (N, 2) vertices (either orientation, simple polygon).
     """
-    x, y = float(p[0]), float(p[1])
-    poly = np.asarray(poly, dtype=float)
-    xi, yi = poly[:, 0], poly[:, 1]
-    xj, yj = np.roll(xi, 1), np.roll(yi, 1)
-    straddle = (yi > y) != (yj > y)
-    with np.errstate(divide="ignore", invalid="ignore"):
-        x_cross = xj + (y - yj) * (xi - xj) / (yi - yj)
-    return bool(np.count_nonzero(straddle & (x < x_cross)) % 2)
+    raise NotImplementedError("TODO: implement point_in_polygon")
 
 
 def segments_intersect(a, b, c, d) -> bool:
     """True if closed segments ab and cd share at least one point (collinear overlap included)."""
-    a, b, c, d = (np.asarray(v, dtype=float) for v in (a, b, c, d))
-
-    def orient(p, q, r):
-        v = (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0])
-        return 0 if abs(v) < 1e-12 else (1 if v > 0 else -1)
-
-    def on_seg(p, q, r):  # r collinear with pq: is it within the bounding box?
-        return (min(p[0], q[0]) - 1e-12 <= r[0] <= max(p[0], q[0]) + 1e-12 and
-                min(p[1], q[1]) - 1e-12 <= r[1] <= max(p[1], q[1]) + 1e-12)
-
-    o1, o2, o3, o4 = orient(a, b, c), orient(a, b, d), orient(c, d, a), orient(c, d, b)
-    if o1 != o2 and o3 != o4:
-        return True
-    return ((o1 == 0 and on_seg(a, b, c)) or (o2 == 0 and on_seg(a, b, d)) or
-            (o3 == 0 and on_seg(c, d, a)) or (o4 == 0 and on_seg(c, d, b)))
+    raise NotImplementedError("TODO: implement segments_intersect")
 
 
 def point_segment_distance(p, a, b) -> float:
     """Euclidean distance from point p to the closed segment ab."""
-    p, a, b = (np.asarray(v, dtype=float) for v in (p, a, b))
-    ab = b - a
-    L2 = float(ab @ ab)
-    t = 0.0 if L2 == 0.0 else float(np.clip((p - a) @ ab / L2, 0.0, 1.0))
-    return float(np.linalg.norm(p - (a + t * ab)))
+    raise NotImplementedError("TODO: implement point_segment_distance")
 
 
 # ----------------------------------------------------------------------------------------------
@@ -159,22 +134,7 @@ def raycast(world: World, origin, angles, max_range: float) -> np.ndarray:
     Ray o + t d, segment p + s e:  t = (p - o) x e / (d x e),  s = (p - o) x d / (d x e),
     a hit needs t >= 0 and 0 <= s <= 1.
     """
-    ang = np.atleast_1d(np.asarray(angles, dtype=float))
-    o = np.asarray(origin, dtype=float)[:2]
-    S = world.segments()
-    p, e = S[:, :2], S[:, 2:] - S[:, :2]                           # (M, 2)
-    d = np.column_stack([np.cos(ang), np.sin(ang)])                # (B, 2)
-    denom = d[:, None, 0] * e[None, :, 1] - d[:, None, 1] * e[None, :, 0]   # (B, M)
-    w = p - o                                                      # (M, 2)
-    num_t = _cross2(w, e)[None, :]                                 # (1, M)
-    num_s = w[None, :, 0] * d[:, None, 1] - w[None, :, 1] * d[:, None, 0]   # (B, M)
-    with np.errstate(divide="ignore", invalid="ignore"):
-        t = num_t / denom
-        s = num_s / denom
-    ok = (np.abs(denom) > 1e-12) & (t >= 0) & (s >= -1e-12) & (s <= 1 + 1e-12)
-    t = np.where(ok, t, np.inf)
-    r = np.minimum(t.min(axis=1), max_range)
-    return r.reshape(np.shape(angles)) if np.ndim(angles) else r[0]
+    raise NotImplementedError("TODO: implement raycast")
 
 
 # ----------------------------------------------------------------------------------------------
@@ -187,16 +147,7 @@ def body_twist_step(pose, vx: float, vy: float, omega: float, dt: float) -> np.n
     [[sin(wT)/w, -(1-cos(wT))/w], [(1-cos(wT))/w, sin(wT)/w]] @ [vx, vy];
     it is rotated into the world by the initial heading. Heading is wrapped.
     """
-    x, y, th = (float(v) for v in pose)
-    wt = omega * dt
-    if abs(wt) < 1e-9:  # second-order series avoids cancellation near omega = 0
-        a, b = dt * (1 - wt * wt / 6.0), dt * (wt / 2.0)
-    else:
-        a, b = math.sin(wt) / omega, (1.0 - math.cos(wt)) / omega
-    dxb = a * vx - b * vy
-    dyb = b * vx + a * vy
-    c, s = math.cos(th), math.sin(th)
-    return np.array([x + c * dxb - s * dyb, y + s * dxb + c * dyb, float(wrap_angle(th + wt))])
+    raise NotImplementedError("TODO: implement body_twist_step")
 
 
 def unicycle_step(pose, v: float, omega: float, dt: float) -> np.ndarray:
@@ -209,14 +160,12 @@ def skid_steer_twist(vL: float, vR: float, B: float, chi: float = 1.0, x_icr: fl
 
     y_L = -y_R = chi*B/2 ; vx = (vL+vR)/2 ; omega = (vR-vL)/(chi*B) ; vy = -omega*x_icr.
     """
-    omega = (vR - vL) / (chi * B)
-    return 0.5 * (vL + vR), -omega * x_icr, omega
+    raise NotImplementedError("TODO: implement skid_steer_twist")
 
 
 def track_speeds(v: float, omega: float, B: float, chi: float = 1.0):
     """Inverse of :func:`skid_steer_twist` (with x_icr = 0): (vL, vR) for a desired (v, omega)."""
-    half = 0.5 * omega * chi * B
-    return v - half, v + half
+    raise NotImplementedError("TODO: implement track_speeds")
 
 
 # ----------------------------------------------------------------------------------------------
@@ -240,17 +189,11 @@ class WheelOdometry:
 
     def measure(self, vL: float, vR: float):
         """Return the measured (vL, vR) track speeds."""
-        v = (1.0 + self.scale_bias) * np.array([vL, vR], dtype=float)
-        if self.sigma > 0:
-            v = v + self.rng.normal(0.0, self.sigma, 2)
-        return float(v[0]), float(v[1])
+        raise NotImplementedError("TODO: implement WheelOdometry.measure")
 
     def update(self, vL_true: float, vR_true: float, dt: float) -> np.ndarray:
         """Measure the true track speeds, integrate one step, return the odometry pose."""
-        mL, mR = self.measure(vL_true, vR_true)
-        vx, vy, w = skid_steer_twist(mL, mR, self.B, self.chi_model)
-        self.pose = body_twist_step(self.pose, vx, vy, w, dt)
-        return self.pose.copy()
+        raise NotImplementedError("TODO: implement WheelOdometry.update")
 
 
 class Lidar:
@@ -273,13 +216,7 @@ class Lidar:
 
     def scan(self, world: World, pose) -> np.ndarray:
         """Noisy ranges (n_beams,) from ``pose``."""
-        r = raycast(world, pose[:2], pose[2] + self.angles(), self.max_range)
-        if self.sigma > 0:
-            r = r + self.rng.normal(0.0, self.sigma, r.shape)
-        r = np.clip(r, 0.0, self.max_range)
-        if self.dropout > 0:
-            r = np.where(self.rng.random(r.shape) < self.dropout, self.max_range, r)
-        return r
+        raise NotImplementedError("TODO: implement Lidar.scan")
 
 
 # ----------------------------------------------------------------------------------------------
@@ -306,27 +243,11 @@ class Channel:
 
     def send(self, t: float, payload) -> bool:
         """Offer a packet at time t. Returns False if it was lost."""
-        self.sent += 1
-        if self.loss > 0 and self.rng.random() < self.loss:
-            self.dropped += 1
-            return False
-        d = self.latency + (self.rng.uniform(-self.jitter, self.jitter) if self.jitter > 0 else 0.0)
-        t_del = t + max(0.0, d)
-        if self.fifo:
-            t_del = max(t_del, self._last_delivery)
-            self._last_delivery = t_del
-        self.delays.append(t_del - t)
-        heapq.heappush(self._queue, (t_del, self._seq, t, payload))
-        self._seq += 1
-        return True
+        raise NotImplementedError("TODO: implement Channel.send")
 
     def receive(self, t: float) -> list:
         """All packets with delivery time <= t, in delivery order, as (t_sent, payload) tuples."""
-        out = []
-        while self._queue and self._queue[0][0] <= t + 1e-12:
-            _, _, ts, payload = heapq.heappop(self._queue)
-            out.append((ts, payload))
-        return out
+        raise NotImplementedError("TODO: implement Channel.receive")
 
 
 # ----------------------------------------------------------------------------------------------
@@ -354,21 +275,7 @@ class PID:
 
     def update(self, setpoint: float, measurement: float) -> float:
         """One control step: return the saturated output u for this setpoint and measurement."""
-        e = setpoint - measurement
-        if self.angle:
-            e = float(wrap_angle(e))
-        if self._prev_meas is None:
-            dmeas = 0.0
-        else:
-            dm = measurement - self._prev_meas
-            dmeas = (float(wrap_angle(dm)) if self.angle else dm) / self.dt
-        self._prev_meas = measurement
-        u_unsat = self.kp * e + self.ki * (self.integral + e * self.dt) - self.kd * dmeas
-        u = min(max(u_unsat, self.u_min), self.u_max)
-        saturated = u != u_unsat
-        if not (self.anti_windup and saturated and np.sign(e) == np.sign(u_unsat)):
-            self.integral += e * self.dt
-        return u
+        raise NotImplementedError("TODO: implement PID.update")
 
 
 class WaypointFollower:
