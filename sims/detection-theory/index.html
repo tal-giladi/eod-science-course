@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sim J · Detection-Theory Lab</title>
+<link rel="stylesheet" href="../common/sim.css">
+<style>
+  .layout { grid-template-columns: 300px 1fr 1fr; }
+  .qcard { border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; margin: 8px 0; background: #0a1017; }
+  @media (max-width: 1100px) { .layout { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="layout">
+  <div class="panel" style="grid-row: span 3">
+    <h2>Sensor model</h2>
+    <div id="sModel"></div>
+    <h2 style="margin-top:12px">World &amp; costs</h2>
+    <div id="sWorld"></div>
+    <h2 style="margin-top:12px">Operating point</h2>
+    <div id="sThr"></div>
+    <div class="row"><button id="optBtn">snap to Bayes-optimal threshold</button></div>
+    <div class="kv" id="kv"></div>
+    <div class="eq" style="margin-top:8px">Likelihood-ratio test: declare target if Λ(x) = p(x|T)/p(x|N) &gt; β
+Bayes-optimal β = (1−π)·C_FA / (π·C_miss)
+PPV = π·Pd / (π·Pd + (1−π)·Pfa)</div>
+  </div>
+  <div class="panel"><h2>Score distributions</h2><canvas id="dist"></canvas>
+    <div class="hint">Noise-only (grey) and target-present (orange) sensor responses. Everything right of the threshold is an alarm.</div></div>
+  <div class="panel"><h2>ROC</h2><canvas id="roc"></canvas>
+    <div class="hint">Pd vs Pfa. Cyan line: iso-cost line with slope β — the optimum is where it touches the ROC. Log-x view shows the low-Pfa region where mine clearance actually operates.</div></div>
+  <div class="panel"><h2>Expected cost vs threshold</h2><canvas id="cost"></canvas></div>
+  <div class="panel"><h2>Clearance economics (fictional task)</h2>
+    <div id="sEcon"></div>
+    <div class="readout" id="econ"></div>
+    <div class="hint">Every alarm must be investigated (e.g. by careful excavation). False alarms cost time; misses leave residual hazard. Humanitarian standards push Pd toward 1 — so Pfa, and therefore time, rises.</div></div>
+  <div class="panel" style="grid-column: span 2">
+    <h2>Challenge · blind trial &amp; operating decision</h2>
+    <p class="hint">A fictional detector is tested in a blind trial (CWA 14747 style). Decide from the trial data — before seeing the ground truth model — whether it meets the requirement, and choose an operating threshold for a stated task.</p>
+    <div class="row"><button id="chStart" class="primary">Run a blind trial</button><button id="chSubmit" disabled>Commit decisions → debrief</button></div>
+    <div id="chBody"></div>
+  </div>
+</div>
+<script src="../common/eod.js"></script>
+<script>
+(function () {
+  var U = EOD.util, level;
+  var diff = EOD.ui.difficultySelect(function (v) { level = v; });
+  level = diff.value;
+  EOD.ui.header('J', 'Detection-Theory Lab', 'ROC · base rates · costs · trials', [U.el('span', { class: 'hint' }, 'difficulty'), diff]);
+  var seed = EOD.seedFromUrl();
+  var s = { dp: 2, sr: 1.4, logpi: -2, cmiss: 100, cfa: 1, thr: 2, area: 10000, dens: 0.002, rate: 1, tInv: 3 };
+
+  // standard normal helpers
+  function phi(x) { return Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI); }
+  function Phi(x) { // Abramowitz–Stegun 7.1.26 via erf
+    var t = 1 / (1 + 0.3275911 * Math.abs(x) / Math.SQRT2), y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x / 2);
+    return x >= 0 ? 0.5 * (1 + y) : 0.5 * (1 - y);
+  }
+  function pd(t) { return 1 - Phi((t - s.dp) / s.sr); }
+  function pfa(t) { return 1 - Phi(t); }
+  function pi() { return Math.pow(10, s.logpi); }
+  function ecost(t) { var p = pi(); return p * (1 - pd(t)) * s.cmiss + (1 - p) * pfa(t) * s.cfa; }
+  function optimal() { var best = -4, bc = Infinity; for (var t = -4; t <= 10; t += 0.002) { var c = ecost(t); if (c < bc) { bc = c; best = t; } } return best; }
+
+  var M = U.$('#sModel'), W = U.$('#sWorld'), T = U.$('#sThr'), E = U.$('#sEcon');
+  EOD.ui.slider(M, "separation d′ (target mean, noise σ = 1)", 0, 5, 0.01, s.dp, function (v) { s.dp = v; draw(); }, function (v) { return v.toFixed(2); });
+  EOD.ui.slider(M, 'target σ (unequal variance)', 0.5, 3, 0.01, s.sr, function (v) { s.sr = v; draw(); }, function (v) { return v.toFixed(2); });
+  EOD.ui.slider(W, 'prior π = P(target) per cell', -4, -0.3, 0.01, s.logpi, function (v) { s.logpi = v; draw(); }, function (v) { return Math.pow(10, v).toExponential(1); });
+  EOD.ui.slider(W, 'cost of a miss C_miss', 1, 10000, 1, s.cmiss, function (v) { s.cmiss = v; draw(); });
+  EOD.ui.slider(W, 'cost of a false alarm C_FA', 0.1, 10, 0.1, s.cfa, function (v) { s.cfa = v; draw(); });
+  var thrSl = EOD.ui.slider(T, 'threshold t', -2, 8, 0.01, s.thr, function (v) { s.thr = v; draw(); }, function (v) { return v.toFixed(2); });
+  EOD.ui.slider(E, 'area to clear [m²]', 1000, 100000, 100, s.area, function (v) { s.area = v; draw(); });
+  EOD.ui.slider(E, 'true item density [items/m²]', 0.0001, 0.02, 0.0001, s.dens, function (v) { s.dens = v; draw(); }, function (v) { return v.toFixed(4); });
+  EOD.ui.slider(E, 'independent sensor looks per m²', 0.5, 10, 0.5, s.rate, function (v) { s.rate = v; draw(); });
+  EOD.ui.slider(E, 'minutes to investigate one alarm', 0.5, 20, 0.5, s.tInv, function (v) { s.tInv = v; draw(); });
+  U.$('#optBtn').onclick = function () { s.thr = optimal(); thrSl.value = s.thr; thrSl.dispatchEvent(new Event('input')); };
+
+  function draw() {
+    var xs = [], n = [], t = [];
+    for (var x = -4; x <= 10; x += 0.02) { xs.push(x); n.push(phi(x)); t.push(phi((x - s.dp) / s.sr) / s.sr); }
+    EOD.plot(U.$('#dist'), { x: [-4, 10], y: [0, 0.45], xlabel: 'sensor score x', ylabel: 'density',
+      series: [{ x: xs, y: n, color: '#8894a8', label: 'noise only' }, { x: xs, y: t, color: '#fb923c', label: 'target present' }],
+      fills: [{ x: xs.filter(function (v) { return v >= s.thr; }), y: n.filter(function (v, i) { return xs[i] >= s.thr; }), color: 'rgba(136,148,168,.25)' },
+        { x: xs.filter(function (v) { return v >= s.thr; }), y: t.filter(function (v, i) { return xs[i] >= s.thr; }), color: 'rgba(251,146,60,.25)' }],
+      vlines: [{ x: s.thr, color: '#22d3ee', label: 'threshold' }], height: 230 });
+    var F = [], D = [];
+    for (var th = 10; th >= -4; th -= 0.02) { F.push(Math.max(1e-6, pfa(th))); D.push(pd(th)); }
+    var p = pi(), beta = (1 - p) * s.cfa / (p * s.cmiss), f0 = pfa(s.thr), d0 = pd(s.thr), to = optimal();
+    EOD.plot(U.$('#roc'), { x: [1e-5, 1], y: [0, 1.01], logX: true, xlabel: 'Pfa (log)', ylabel: 'Pd',
+      series: [{ x: F, y: D, color: '#fb923c', label: 'ROC' }],
+      points: [{ x: Math.max(1e-6, f0), y: d0, color: '#fff', r: 5, label: 'you' }, { x: Math.max(1e-6, pfa(to)), y: pd(to), color: '#4ade80', r: 4, label: 'Bayes opt.' }], height: 230 });
+    var ts = [], cs = [];
+    for (var q = -2; q <= 8; q += 0.02) { ts.push(q); cs.push(ecost(q)); }
+    var cmax = Math.max.apply(null, cs);
+    EOD.plot(U.$('#cost'), { x: [-2, 8], y: [0, cmax * 1.05], xlabel: 'threshold t', ylabel: 'expected cost per cell',
+      series: [{ x: ts, y: cs, color: '#a78bfa', label: 'E[cost]' }], vlines: [{ x: s.thr, color: '#22d3ee', label: 'you' }, { x: to, color: '#4ade80', label: 'opt' }], height: 200 });
+    var ppv = p * d0 / (p * d0 + (1 - p) * f0);
+    // AUC for binormal model: Phi(d' / sqrt(1 + s^2))
+    var auc = Phi(s.dp / Math.sqrt(1 + s.sr * s.sr));
+    U.$('#kv').innerHTML = [['Pd', U.fmt(d0, 4)], ['Pfa', U.fmt(f0, 5)], ['PPV', U.fmt(ppv, 4)], ['β (optimal LR threshold)', U.fmt(beta, 3)],
+      ['AUC (binormal)', U.fmt(auc, 4)], ['E[cost] you / optimal', U.fmt(ecost(s.thr), 4) + ' / ' + U.fmt(ecost(to), 4)]]
+      .map(function (r) { return '<span class="k">' + r[0] + '</span><span>' + r[1] + '</span>'; }).join('');
+    var looks = s.area * s.rate, items = s.area * s.dens;
+    var detected = items * d0, missed = items - detected, fas = looks * f0;
+    U.$('#econ').textContent =
+      'true items in area        ' + U.fmt(items, 1) + '\n' +
+      'expected detected         ' + U.fmt(detected, 2) + '\n' +
+      'expected MISSED           ' + U.fmt(missed, 3) + '   ← residual hazard\n' +
+      'false alarms              ' + U.fmt(fas, 1) + '\n' +
+      'alarms per true item      ' + U.fmt((fas + detected) / Math.max(1e-9, detected), 1) + '\n' +
+      'investigation time        ' + U.fmt((fas + detected) * s.tInv / 60, 1) + ' h';
+  }
+
+  // --------- challenge: blind trial
+  var ch = null;
+  function wilson(k, n, z) { var p = k / n, d = 1 + z * z / n, c = p + z * z / (2 * n), h = z * Math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)); return [(c - h) / d, (c + h) / d]; }
+  U.$('#chStart').onclick = function () {
+    var r = EOD.rng(seed);
+    var trueDp = r.uniform(1.8, 3.6), trueSr = r.uniform(0.8, 1.8), thr = r.uniform(0.8, 2.2);
+    var nT = { Beginner: 200, Intermediate: 120, Advanced: 80, Expert: 60 }[level], nBlank = 400;
+    var hits = 0, fas = 0;
+    var truePd = 1 - Phi((thr - trueDp) / trueSr), truePfa = 1 - Phi(thr);
+    for (var i = 0; i < nT; i++) if (r.bernoulli(truePd)) hits++;
+    for (var j = 0; j < nBlank; j++) if (r.bernoulli(truePfa)) fas++;
+    var req = r.pick([0.9, 0.95, 0.97]);
+    ch = { trueDp: trueDp, trueSr: trueSr, thr: thr, nT: nT, nBlank: nBlank, hits: hits, fas: fas, truePd: truePd, truePfa: truePfa, req: req,
+      pi: Math.pow(10, r.uniform(-3, -1.5)), cmiss: r.pick([200, 1000, 5000]), cfa: 1 };
+    U.$('#chBody').innerHTML =
+      '<div class="qcard">Trial: <b>' + nT + '</b> buried fictional targets, <b>' + hits + '</b> detected. <b>' + nBlank + '</b> blank cells, <b>' + fas + '</b> false alarms (threshold fixed by the manufacturer).</div>' +
+      '<div class="qcard">Q1. Point estimate of Pd? <input id="q1" type="number" step="any"></div>' +
+      '<div class="qcard">Q2. Lower bound of the two-sided 95 % Wilson interval for Pd? <input id="q2" type="number" step="any"></div>' +
+      '<div class="qcard">Q3. Requirement: <b>Pd ≥ ' + req + '</b> demonstrated with 95 % confidence (i.e. the lower bound must exceed it). Does the detector pass? <select id="q3"><option value="">—</option><option value="yes">passes</option><option value="no">does not pass / not demonstrated</option></select></div>' +
+      '<div class="qcard">Q4. How many targets would a trial need so that, if the detector were perfect in the trial (all detected), the one-sided 95 % lower bound on Pd reaches ' + req + '? (rule of three: lower bound ≈ 1 − 3/n) <input id="q4" type="number" step="1"></div>' +
+      '<div class="qcard">Q5. For a task with prior π = ' + ch.pi.toExponential(1) + ' per cell, C_miss = ' + ch.cmiss + ', C_FA = 1, what likelihood-ratio threshold β is Bayes-optimal? <input id="q5" type="number" step="any"></div>';
+    U.$('#chSubmit').disabled = false; this.disabled = true;
+  };
+  U.$('#chSubmit').onclick = function () {
+    var c = ch, v = function (id) { return parseFloat(U.$('#' + id).value); };
+    var pdHat = c.hits / c.nT, wl = wilson(c.hits, c.nT, 1.96), pass = wl[0] >= c.req, nReq = Math.ceil(3 / (1 - c.req)), beta = (1 - c.pi) * c.cfa / (c.pi * c.cmiss);
+    function close(a, b, tol) { return isFinite(a) && Math.abs(a - b) <= tol * Math.max(1e-9, Math.abs(b)); }
+    var tol = { Beginner: 0.05, Intermediate: 0.03, Advanced: 0.02, Expert: 0.01 }[level];
+    var r1 = close(v('q1'), pdHat, tol), r2 = close(v('q2'), wl[0], tol * 2), r3 = U.$('#q3').value === (pass ? 'yes' : 'no'), r4 = close(v('q4'), nReq, 0.1), r5 = close(v('q5'), beta, 0.05);
+    var score = [r1, r2, r3, r4, r5].filter(Boolean).length;
+    EOD.debrief.show({ title: 'Blind-trial evaluation', seed: seed, level: level,
+      scores: [{ label: 'Statistics', value: 100 * ([r1, r2, r4].filter(Boolean).length) / 3 }, { label: 'Acceptance decision', value: r3 ? 100 : 0 }, { label: 'Operating point', value: r5 ? 100 : 0 }],
+      observed: ['Trial: ' + c.hits + '/' + c.nT + ' detections; ' + c.fas + '/' + c.nBlank + ' false alarms on blanks.'],
+      decided: ['Pd = ' + (U.$('#q1').value || '—') + ' (correct ' + U.fmt(pdHat, 4) + ')', 'Wilson lower bound = ' + (U.$('#q2').value || '—') + ' (correct ' + U.fmt(wl[0], 4) + ')',
+        'Acceptance: ' + (U.$('#q3').value || '—') + ' (correct: ' + (pass ? 'passes' : 'not demonstrated') + ')', 'Trial size: ' + (U.$('#q4').value || '—') + ' (≈ ' + nReq + ')', 'β = ' + (U.$('#q5').value || '—') + ' (correct ' + U.fmt(beta, 4) + ')'],
+      missed: [r3 ? null : (pass ? 'The Wilson lower bound (' + U.fmt(wl[0], 4) + ') clears the requirement, so the trial does demonstrate it at 95 % confidence.' : 'A point estimate above the requirement is not a demonstration: the lower confidence bound (' + U.fmt(wl[0], 4) + ') must clear it. Small trials cannot demonstrate very high Pd.'),
+        r4 ? null : 'Zero-failure trials: P(all n detected | Pd = p₀) = p₀ⁿ ≤ 0.05 ⇒ n ≥ ln 0.05 / ln p₀ ≈ 3/(1 − p₀).',
+        r5 ? null : 'β = (1 − π)C_FA/(π C_miss): rare targets push β up, expensive misses push it down.'].filter(Boolean),
+      uncertainty: ['Ground truth for this detector: d′ = ' + U.fmt(c.trueDp, 3) + ', target σ = ' + U.fmt(c.trueSr, 3) + ', true Pd = ' + U.fmt(c.truePd, 4) + ', true Pfa = ' + U.fmt(c.truePfa, 4) + '.',
+        'Trial targets and soils may not represent the field: a trial Pd is conditional on the trial conditions.'],
+      reasoning: ['Humanitarian clearance treats a miss as far more costly than a false alarm, so detectors are run at high Pd and the resulting false alarms are paid for in time.', 'Base rates dominate PPV: at low π even an excellent detector produces mostly false alarms.'],
+      physics: ['Sensor scores are noisy physical measurements (Stage 5); d′ summarises signal-to-noise.'],
+      engineering: ['Test & evaluation design (CWA 14747): blind lanes, target sets, soil types, confidence bounds, sample size.'],
+      links: [{ href: EOD.COURSE + 'lessons/stage-05/lesson-01', text: '05.1 Detection theory' }, { href: EOD.COURSE + 'lessons/stage-05/lesson-07', text: '05.7 Search theory & land release' }],
+      onClose: function () { U.$('#chStart').disabled = false; U.$('#chSubmit').disabled = true; seed = Math.floor(Math.random() * 1e9); }
+    });
+  };
+  window.addEventListener('resize', draw);
+  draw();
+})();
+</script>
+</body>
+</html>
