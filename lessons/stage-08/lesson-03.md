@@ -175,7 +175,7 @@ $$ \Delta\tilde\nu = \frac{1}{\lambda_0} - \frac{1}{\lambda_s} \quad[\text{cm}^{
 $\Delta\tilde\nu = 12\,738.9 - 11\,764.7 = 974$ cm⁻¹ — in the region where many symmetric
 stretching modes of polyatomic ions lie. The shift is a property of the *molecule*, not the
 laser: a 532 nm laser would scatter the same mode at $1/(1/532\text{ nm} - 974\text{ cm}^{-1}) =
-560$ nm. Longer excitation wavelengths reduce fluorescence background (a major practical problem
+561$ nm. Longer excitation wavelengths reduce fluorescence background (a major practical problem
 with dirty post-blast debris) at the cost of $\lambda^{-4}$ weaker scattering.
 
 ```python
@@ -185,7 +185,7 @@ def raman_shift_cm1(lam0_nm, lams_nm):
 def scattered_nm(lam0_nm, shift_cm1):
     return 1e7 / (1e7 / lam0_nm - shift_cm1)
 
-print(round(raman_shift_cm1(785, 850), 1), round(scattered_nm(532, 974.1), 1))   # 974.1 560.0
+print(round(raman_shift_cm1(785, 850), 1), round(scattered_nm(532, 974.1), 1))   # 974.1 561.1
 print(round(np.log10(1 / 0.25), 3))                                               # 0.602
 ```
 
@@ -373,9 +373,10 @@ print(gcc_phat_lag(a, b), gcc_phat_lag(a, b) / fs)    # 1234 0.15425 s
 (a) With $n = 2\times10^5$ images, what dHash threshold $d^\*$ keeps the expected number of
 false pairs below 1? (b) Why is the "shifted 3 px" variant a problem, and what would you add?
 
-*Answer.* (a) Need $\binom{n}{2}P(d\le d^\*) < 1$, i.e. $P < 5\times10^{-11}$. $P(d\le 6) =
-\sum_{j\le6}\binom{64}{j}2^{-64} \approx 4.8\times10^{-11}$ (while $P(d\le7)\approx4.7\times10^{-10}$)
-→ $d^\*=6$. A strict threshold lowers recall for genuine near-duplicates, so pair it with
+*Answer.* (a) Need $\binom{n}{2}P(d\le d^\*) < 1$ with $\binom{n}{2}\approx2\times10^{10}$, i.e.
+$P < 5\times10^{-11}$. $P(d\le 7) = \sum_{j\le7}\binom{64}{j}2^{-64} \approx 3.8\times10^{-11}$
+(0.76 expected false pairs), while $P(d\le8)\approx2.8\times10^{-10}$ (≈ 5.6 false pairs) →
+$d^\*=7$. A strict threshold lowers recall for genuine near-duplicates, so pair it with
 verification. (b) dHash is a gradient-sign code on a fixed grid, so crops and shifts move content
 across cells. Add a shift-robust representation (keypoint matching with geometric verification,
 or learned embeddings with a calibrated threshold) in a second stage.
