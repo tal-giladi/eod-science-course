@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sim I · Shock Tube &amp; Hugoniot Explorer</title>
+<link rel="stylesheet" href="../common/sim.css">
+<style>
+  .layout { grid-template-columns: 300px 1fr 1fr; }
+  .tabs button.active { border-color: var(--accent); color: var(--accent); }
+  .pane { display: none; } .pane.show { display: contents; }
+  .qcard { border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; margin: 8px 0; background: #0a1017; }
+  .qcard input { width: 140px; }
+  @media (max-width: 1100px) { .layout { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="row tabs" style="padding:8px 12px;border-bottom:1px solid var(--line)">
+  <button data-tab="shock" class="active">Normal shock &amp; reflection</button>
+  <button data-tab="tube">Shock tube (Riemann problem)</button>
+  <button data-tab="cj">Detonation: Hugoniot, Rayleigh line &amp; CJ</button>
+  <button data-tab="challenge">Challenge</button>
+</div>
+
+<div class="layout">
+  <!-- ============ NORMAL SHOCK ============ -->
+  <div class="pane show" id="p-shock">
+    <div class="panel">
+      <h2>Incident shock</h2>
+      <div id="sShock"></div>
+      <div class="kv" id="shockKV"></div>
+      <div class="eq" style="margin-top:8px">p₂/p₁ = 1 + 2γ/(γ+1)(M²−1)
+ρ₂/ρ₁ = (γ+1)M² / ((γ−1)M²+2)
+T₂/T₁ = (p₂/p₁)(ρ₁/ρ₂)
+u₂/a₁ = 2/(γ+1)(M − 1/M)
+p_r/p₁ (reflected) from ideal-gas reflection</div>
+    </div>
+    <div class="panel">
+      <h2>Jump ratios vs shock Mach number</h2>
+      <canvas id="ratios"></canvas>
+      <div class="hint">Density saturates at (γ+1)/(γ−1); pressure and temperature do not. The dot is the current shock.</div>
+    </div>
+    <div class="panel">
+      <h2>Hugoniot in the (v, p) plane</h2>
+      <canvas id="hug"></canvas>
+      <div class="hint">Shock Hugoniot (orange) vs isentrope (dashed) through state 1; Rayleigh line (cyan) slope −(ρ₁U)². For weak shocks they are tangent — shocks are nearly isentropic; for strong shocks they diverge (entropy rise).</div>
+    </div>
+  </div>
+
+  <!-- ============ SHOCK TUBE ============ -->
+  <div class="pane" id="p-tube">
+    <div class="panel">
+      <h2>Initial states (diaphragm at x = 0.5)</h2>
+      <div id="sTube"></div>
+      <div class="row"><button id="tubePlay" class="primary">▶ run</button><button id="tubeReset">reset</button>
+        <label><input type="checkbox" id="tubeNum" checked> overlay numerical HLL (N = 200)</label></div>
+      <div class="kv" id="tubeKV"></div>
+      <p class="hint">Exact solution: left rarefaction fan · contact discontinuity · right-running shock. The numerical scheme smears all three — that numerical diffusion is why simulators need fine grids near shocks.</p>
+    </div>
+    <div class="panel" style="grid-column: span 2">
+      <h2>Profiles at time t</h2>
+      <canvas id="tubeP"></canvas>
+      <canvas id="tubeR" style="margin-top:6px"></canvas>
+      <canvas id="tubeU" style="margin-top:6px"></canvas>
+    </div>
+  </div>
+
+  <!-- ============ CJ ============ -->
+  <div class="pane" id="p-cj">
+    <div class="panel">
+      <h2>Fictional reactive gas (one-γ model)</h2>
+      <div id="sCJ"></div>
+      <div class="kv" id="cjKV"></div>
+      <div class="eq" style="margin-top:8px">Reactive Hugoniot (non-dim. P = p₂/p₁, V = v₂/v₁, Q = q/(p₁v₁), μ² = (γ−1)/(γ+1)):
+  P = (1 − μ²V + 2μ²Q) / (V − μ²)
+Rayleigh line:  P − 1 = γM²(1 − V)
+CJ: Rayleigh line tangent to the Hugoniot ⇒ minimum M with a solution.</div>
+      <p class="hint">Q is an abstract heat-release parameter of a <b>fictional</b> gas. No real material is modelled.</p>
+    </div>
+    <div class="panel" style="grid-column: span 2">
+      <h2>Hugoniot (Q = 0 and Q &gt; 0), Rayleigh lines, CJ point</h2>
+      <canvas id="cjPlot"></canvas>
+      <div class="hint">Drag the Mach slider: below M_CJ the Rayleigh line misses the reactive Hugoniot (no steady solution); above it there are two intersections (strong/weak). The tangent point is the Chapman–Jouguet state, where the flow behind the wave is exactly sonic relative to it.</div>
+    </div>
+  </div>
+
+  <!-- ============ CHALLENGE ============ -->
+  <div class="pane" id="p-challenge">
+    <div class="panel" style="grid-column: span 3">
+      <h2>Challenge · compute, then commit</h2>
+      <p class="hint">Six problems from the seed. At Advanced/Expert the explorer tabs are locked until you submit. Tolerance: Beginner ±10 %, Intermediate ±5 %, Advanced ±3 %, Expert ±1.5 %.</p>
+      <div class="row"><button id="chStart" class="primary">Generate problems</button><button id="chSubmit" disabled>Submit → debrief</button></div>
+      <div id="chQ"></div>
+    </div>
+  </div>
+</div>
+
+<script src="../common/eod.js"></script>
+<script src="../common/blast.js"></script>
+<script src="../common/riemann.js"></script>
+<script>
+(function () {
+  var U = EOD.util, B = BLAST, level;
+  var diff = EOD.ui.difficultySelect(function (v) { level = v; });
+  level = diff.value;
+  EOD.ui.header('I', 'Shock Tube & Hugoniot Explorer', 'Rankine–Hugoniot · Riemann problem · Chapman–Jouguet', [U.el('span', { class: 'hint' }, 'difficulty'), diff]);
+  var seed = EOD.seedFromUrl(), locked = false;
+
+  // ---------------- tabs
+  var tabs = document.querySelectorAll('.tabs button');
+  tabs.forEach(function (b) {
+    b.onclick = function () {
+      if (locked && b.dataset.tab !== 'challenge') return;
+      tabs.forEach(function (x) { x.classList.toggle('active', x === b); });
+      document.querySelectorAll('.pane').forEach(function (p) { p.classList.toggle('show', p.id === 'p-' + b.dataset.tab); });
+      redraw();
+    };
+  });
+
+  // ---------------- normal shock
+  var st = { M: 2, g: 1.4, tubeRatio: 10, tubeRho: 8, tubeT: 0.2, Q: 20, Mcj: 5 };
+  EOD.ui.slider(U.$('#sShock'), 'Shock Mach number M_s', 1.001, 8, 0.001, st.M, function (v) { st.M = v; drawShock(); }, function (v) { return v.toFixed(3); });
+  EOD.ui.slider(U.$('#sShock'), 'γ (ratio of specific heats)', 1.1, 1.67, 0.01, st.g, function (v) { st.g = v; drawShock(); }, function (v) { return v.toFixed(2); });
+  function drawShock() {
+    var j = B.shockJump(st.M, st.g), p1 = 101.325, T1 = 288.15, a1 = Math.sqrt(st.g * 287.05 * T1);
+    var dp = (j.pr - 1) * p1, prr = B.reflectedRatio(dp, p1, st.g);
+    U.$('#shockKV').innerHTML = kv([
+      ['p₂/p₁', U.fmt(j.pr, 4)], ['Δp (sea level)', U.fmt(dp, 2) + ' kPa'], ['ρ₂/ρ₁', U.fmt(j.rr, 4)],
+      ['T₂/T₁', U.fmt(j.Tr, 4) + '  (T₂ = ' + U.fmt(T1 * j.Tr - 273.15, 1) + ' °C)'], ['u₂', U.fmt(j.up * a1, 1) + ' m/s'],
+      ['U_s', U.fmt(st.M * a1, 1) + ' m/s'], ['M₂ (downstream, shock frame)', U.fmt(j.Mdown, 4)],
+      ['Δs/c_v', U.fmt(Math.log(j.pr * Math.pow(j.rr, -st.g)), 5)], ['reflected p_r/p_s', U.fmt(prr, 3)],
+      ['ρ limit (γ+1)/(γ−1)', U.fmt((st.g + 1) / (st.g - 1), 3)]]);
+    var Ms = [], P = [], R = [], T = [];
+    for (var i = 0; i <= 200; i++) { var m = 1 + 7 * i / 200; var jj = B.shockJump(m, st.g); Ms.push(m); P.push(jj.pr); R.push(jj.rr); T.push(jj.Tr); }
+    EOD.plot(U.$('#ratios'), { x: [1, 8], y: [0.8, 100], logY: true, xlabel: 'M_s', ylabel: 'ratio (state 2 / state 1)',
+      series: [{ x: Ms, y: P, color: '#fb923c', label: 'p₂/p₁' }, { x: Ms, y: R, color: '#22d3ee', label: 'ρ₂/ρ₁' }, { x: Ms, y: T, color: '#a78bfa', label: 'T₂/T₁' }],
+      hlines: [{ y: (st.g + 1) / (st.g - 1), color: '#335', label: 'density limit' }],
+      points: [{ x: st.M, y: j.pr, color: '#fb923c' }, { x: st.M, y: j.rr, color: '#22d3ee' }, { x: st.M, y: j.Tr, color: '#a78bfa' }], height: 300 });
+    // Hugoniot & isentrope in (V, P), non-dimensional; Q = 0
+    var mu2 = (st.g - 1) / (st.g + 1), Vs = [], Ph = [], Pi = [];
+    for (var k = 0; k <= 300; k++) { var V = mu2 + 1e-3 + (1 - mu2) * k / 300; Vs.push(V); Ph.push((1 - mu2 * V) / (V - mu2)); Pi.push(Math.pow(V, -st.g)); }
+    var V2 = 1 / j.rr, P2 = j.pr;
+    EOD.plot(U.$('#hug'), { x: [mu2, 1.05], y: [0.5, Math.max(10, P2 * 1.3)], xlabel: 'v₂/v₁', ylabel: 'p₂/p₁',
+      series: [{ x: Vs, y: Ph, color: '#fb923c', label: 'shock Hugoniot' }, { x: Vs, y: Pi, color: '#8894a8', dash: [5, 4], label: 'isentrope' },
+        { x: [1, V2 - 0.05], y: [1, 1 + st.g * st.M * st.M * (1 - (V2 - 0.05))], color: '#22d3ee', label: 'Rayleigh line' }],
+      points: [{ x: 1, y: 1, color: '#fff', label: '1' }, { x: V2, y: P2, color: '#fb923c', r: 5, label: '2' }],
+      vlines: [{ x: mu2, color: '#335', label: 'v min' }], height: 300 });
+  }
+
+  // ---------------- shock tube
+  var tubeT = 0, tubeRun = false, num = null;
+  EOD.ui.slider(U.$('#sTube'), 'Pressure ratio p_L/p_R', 1.2, 100, 0.1, st.tubeRatio, function (v) { st.tubeRatio = v; resetTube(); }, function (v) { return v.toFixed(1); });
+  EOD.ui.slider(U.$('#sTube'), 'Density ratio ρ_L/ρ_R', 0.5, 20, 0.1, st.tubeRho, function (v) { st.tubeRho = v; resetTube(); }, function (v) { return v.toFixed(1); });
+  function tubeStates() { return { L: { r: st.tubeRho * 0.125, u: 0, p: st.tubeRatio * 0.1 }, R: { r: 0.125, u: 0, p: 0.1 } }; }
+  function resetTube() {
+    tubeT = 0.0001; var s = tubeStates(), N = 200; num = { N: N, r: [], m: [], E: [] };
+    for (var i = 0; i < N; i++) { var x = (i + 0.5) / N, S = x < 0.5 ? s.L : s.R; num.r.push(S.r); num.m.push(0); num.E.push(S.p / 0.4); }
+    drawTube();
+  }
+  function hllStep1D(dtMax) {
+    var g = 1.4, N = num.N, dx = 1 / N, F = [], smax = 0;
+    function prim(i) { i = Math.max(0, Math.min(N - 1, i)); var r = num.r[i], u = num.m[i] / r; return [r, u, (g - 1) * (num.E[i] - 0.5 * r * u * u)]; }
+    for (var i = 0; i <= N; i++) {
+      var L = prim(i - 1), R = prim(i), cL = Math.sqrt(g * L[2] / L[0]), cR = Math.sqrt(g * R[2] / R[0]);
+      var SL = Math.min(L[1] - cL, R[1] - cR), SR = Math.max(L[1] + cL, R[1] + cR); smax = Math.max(smax, Math.abs(SL), Math.abs(SR));
+      var EL = L[2] / (g - 1) + 0.5 * L[0] * L[1] * L[1], ER = R[2] / (g - 1) + 0.5 * R[0] * R[1] * R[1];
+      var fL = [L[0] * L[1], L[0] * L[1] * L[1] + L[2], (EL + L[2]) * L[1]], fR = [R[0] * R[1], R[0] * R[1] * R[1] + R[2], (ER + R[2]) * R[1]];
+      var uL = [L[0], L[0] * L[1], EL], uR = [R[0], R[0] * R[1], ER];
+      F.push(SL >= 0 ? fL : SR <= 0 ? fR : [0, 1, 2].map(function (k) { return (SR * fL[k] - SL * fR[k] + SL * SR * (uR[k] - uL[k])) / (SR - SL); }));
+    }
+    var dt = Math.min(dtMax, 0.45 * dx / smax);
+    for (var k = 0; k < N; k++) { num.r[k] -= dt / dx * (F[k + 1][0] - F[k][0]); num.m[k] -= dt / dx * (F[k + 1][1] - F[k][1]); num.E[k] -= dt / dx * (F[k + 1][2] - F[k][2]); }
+    return dt;
+  }
+  function drawTube() {
+    var s = tubeStates(), sol = RIEMANN.solve(s.L, s.R, 1.4), xs = [], P = [], R = [], Uu = [];
+    for (var i = 0; i <= 600; i++) { var x = i / 600, q = RIEMANN.sample(sol, (x - 0.5) / tubeT); xs.push(x); P.push(q.p); R.push(q.r); Uu.push(q.u); }
+    var nx = [], nP = [], nR = [], nU = [];
+    if (U.$('#tubeNum').checked && num) for (var k = 0; k < num.N; k++) { var r = num.r[k], u = num.m[k] / r; nx.push((k + 0.5) / num.N); nR.push(r); nU.push(u); nP.push(0.4 * (num.E[k] - 0.5 * r * u * u)); }
+    function pl(id, y, ny, lab, col) {
+      var mx = Math.max.apply(null, y) * 1.1, mn = Math.min(0, Math.min.apply(null, y) * 1.1);
+      var ser = [{ x: xs, y: y, color: col, label: 'exact' }];
+      if (nx.length) ser.push({ x: nx, y: ny, color: '#e6edf3', width: 1, dash: [2, 3], label: 'HLL' });
+      EOD.plot(U.$(id), { x: [0, 1], y: [mn, mx], xlabel: 'x', ylabel: lab, series: ser, height: 150 });
+    }
+    pl('#tubeP', P, nP, 'p', '#fb923c'); pl('#tubeR', R, nR, 'ρ', '#22d3ee'); pl('#tubeU', Uu, nU, 'u', '#a78bfa');
+    var cR = Math.sqrt(1.4 * s.R.p / s.R.r);
+    U.$('#tubeKV').innerHTML = kv([['t', U.fmt(tubeT, 3)], ['p* (star pressure)', U.fmt(sol.p, 4)], ['u* (contact speed)', U.fmt(sol.u, 4)],
+      ['shock speed', sol.shockR ? U.fmt(sol.shockR, 4) : '—'], ['shock Mach M_s', sol.shockR ? U.fmt(sol.shockR / cR, 4) : '—'],
+      ['p*/p_R across shock', U.fmt(sol.p / s.R.p, 4)], ['ρ behind shock / ρ_R', U.fmt(sol.rR / s.R.r, 4)]]);
+  }
+  U.$('#tubePlay').onclick = function () { tubeRun = !tubeRun; this.textContent = tubeRun ? '❚❚ pause' : '▶ run'; };
+  U.$('#tubeReset').onclick = resetTube;
+  U.$('#tubeNum').onchange = drawTube;
+  function loop() {
+    if (tubeRun && tubeT < st.tubeT) {
+      var target = Math.min(st.tubeT, tubeT + 0.002), t = tubeT;
+      while (t < target - 1e-12) t += hllStep1D(target - t);
+      tubeT = target; drawTube();
+      if (tubeT >= st.tubeT) { tubeRun = false; U.$('#tubePlay').textContent = '▶ run'; }
+    }
+    requestAnimationFrame(loop);
+  }
+
+  // ---------------- CJ
+  EOD.ui.slider(U.$('#sCJ'), 'Heat release Q = q/(p₁v₁) (fictional gas)', 0, 60, 0.5, st.Q, function (v) { st.Q = v; drawCJ(); }, function (v) { return v.toFixed(1); });
+  EOD.ui.slider(U.$('#sCJ'), 'Wave Mach number M', 1, 12, 0.01, st.Mcj, function (v) { st.Mcj = v; drawCJ(); }, function (v) { return v.toFixed(2); });
+  function mCJ(Q, g) {
+    // closed form for the one-gamma model: M_CJ = sqrt(H + 1) + sqrt(H), H = (γ²−1)Q/(2γ)
+    var H = (g * g - 1) * Q / (2 * g);
+    return Math.sqrt(H + 1) + Math.sqrt(H);
+  }
+  function intersections(M, Q, g) {
+    // substitute Rayleigh P = 1 + γM²(1 − V) into Hugoniot P(V − μ²) = 1 − μ²V + 2μ²Q
+    var mu2 = (g - 1) / (g + 1), k = g * M * M;
+    // (1 + k − kV)(V − μ²) − 1 + μ²V − 2μ²Q = 0 → −kV² + (1 + k + kμ² + μ²)V − (1 + k)μ² − 1 − 2μ²Q = 0
+    var a = -k, b = 1 + k + k * mu2 + mu2, c = -(1 + k) * mu2 - 1 - 2 * mu2 * Q;
+    var D = b * b - 4 * a * c;
+    if (D < 0) return [];
+    var r1 = (-b + Math.sqrt(D)) / (2 * a), r2 = (-b - Math.sqrt(D)) / (2 * a);
+    return [r1, r2].filter(function (v) { return v > mu2 && v <= 1 + 1e-9; }).map(function (v) { return { V: v, P: 1 + k * (1 - v) }; });
+  }
+  function drawCJ() {
+    var g = 1.4, mu2 = (g - 1) / (g + 1), Q = st.Q, Mc = mCJ(Q, g);
+    var Vs = [], P0 = [], PQ = [];
+    for (var i = 0; i <= 400; i++) { var V = mu2 + 0.004 + (1.6 - mu2) * i / 400; Vs.push(V); P0.push((1 - mu2 * V) / (V - mu2)); PQ.push((1 - mu2 * V + 2 * mu2 * Q) / (V - mu2)); }
+    var ints = intersections(st.Mcj, Q, g), cj = intersections(Mc * (1 + 1e-9), Q, g)[0] || { V: NaN, P: NaN };
+    var k = g * st.Mcj * st.Mcj, kc = g * Mc * Mc;
+    var pts = [{ x: 1, y: 1, color: '#fff', label: '1' }];
+    ints.forEach(function (p, n) { pts.push({ x: p.V, y: p.P, color: '#22d3ee', label: n ? 'weak' : 'strong' }); });
+    if (isFinite(cj.V)) pts.push({ x: cj.V, y: cj.P, color: '#facc15', r: 6, label: 'CJ' });
+    // von Neumann spike: inert (Q = 0) shock at the CJ speed
+    var vn = B.shockJump(Mc, g);
+    pts.push({ x: 1 / vn.rr, y: vn.pr, color: '#f87171', r: 5, label: 'vN spike' });
+    var ymax = Math.max(vn.pr * 1.15, 10);
+    EOD.plot(U.$('#cjPlot'), { x: [mu2, 1.6], y: [0, ymax], xlabel: 'V = v₂/v₁', ylabel: 'P = p₂/p₁',
+      series: [{ x: Vs, y: P0, color: '#8894a8', label: 'inert Hugoniot (Q=0)' }, { x: Vs, y: PQ, color: '#fb923c', label: 'reactive Hugoniot' },
+        { x: [1, mu2], y: [1, 1 + k * (1 - mu2)], color: '#22d3ee', label: 'Rayleigh (current M)' },
+        { x: [1, mu2], y: [1, 1 + kc * (1 - mu2)], color: '#facc15', dash: [4, 4], label: 'Rayleigh (M_CJ)' }],
+      points: pts, height: 440 });
+    U.$('#cjKV').innerHTML = kv([['M_CJ', U.fmt(Mc, 4)], ['P_CJ = p/p₁', U.fmt(cj.P, 4)], ['V_CJ = v/v₁', U.fmt(cj.V, 4)],
+      ['von Neumann spike P', U.fmt(vn.pr, 4) + '  (≈ ' + U.fmt(vn.pr / cj.P, 2) + '× P_CJ)'], ['current M', U.fmt(st.Mcj, 3) + (st.Mcj < Mc ? '  < M_CJ: no steady solution' : '  ≥ M_CJ: ' + ints.length + ' intersection(s)')]]);
+  }
+
+  function kv(rows) { return rows.map(function (r) { return '<span class="k">' + r[0] + '</span><span>' + r[1] + '</span>'; }).join(''); }
+  function redraw() { drawShock(); drawTube(); drawCJ(); }
+
+  // ---------------- challenge
+  var qs = [], TOL = { Beginner: 0.10, Intermediate: 0.05, Advanced: 0.03, Expert: 0.015 };
+  U.$('#chStart').onclick = function () {
+    var r = EOD.rng(seed); qs = [];
+    var M1 = +r.uniform(1.2, 4).toFixed(2), g1 = r.pick([1.4, 1.4, 1.3, 1.67]);
+    qs.push({ q: 'A normal shock with M_s = ' + M1 + ' moves into a gas with γ = ' + g1 + '. Compute p₂/p₁.', a: B.shockJump(M1, g1).pr, l: '01.3' , why: 'p₂/p₁ = 1 + 2γ/(γ+1)(M² − 1).' });
+    qs.push({ q: 'Same shock: compute ρ₂/ρ₁.', a: B.shockJump(M1, g1).rr, l: '01.3', why: 'ρ₂/ρ₁ = (γ+1)M²/((γ−1)M² + 2); bounded by (γ+1)/(γ−1).' });
+    var T1 = +r.uniform(250, 310).toFixed(0);
+    qs.push({ q: 'Same shock, upstream temperature ' + T1 + ' K. Compute T₂ in kelvin.', a: T1 * B.shockJump(M1, g1).Tr, l: '01.3', why: 'T₂/T₁ = (p₂/p₁)(ρ₁/ρ₂) — a strong shock heats far more than it compresses.' });
+    var dp = +r.uniform(30, 600).toFixed(0);
+    qs.push({ q: 'In sea-level air (p₁ = 101.325 kPa, γ = 1.4) a shock of Δp = ' + dp + ' kPa reflects normally from a rigid wall. Compute the reflected overpressure in kPa.', a: B.reflectedOverpressure(dp, 101.325), l: '01.4', why: 'p_r = 2Δp(7p₀ + 4Δp)/(7p₀ + Δp) for γ = 1.4.' });
+    var pr = +r.uniform(3, 40).toFixed(1);
+    var sol = RIEMANN.solve({ r: 1, u: 0, p: pr }, { r: 1, u: 0, p: 1 }, 1.4);
+    qs.push({ q: 'Shock tube with equal densities and pressure ratio p_L/p_R = ' + pr + ' (γ = 1.4 both sides). Compute the Mach number of the transmitted shock (relative to the right gas sound speed). (Needs an iterative solve — this is a Riemann problem.)', a: sol.shockR / Math.sqrt(1.4), l: '01.3', why: 'Solve f_L(p*) + f_R(p*) + Δu = 0 for p*, then M_s from p*/p_R via the Rankine–Hugoniot inverse. The shock is always much weaker than the diaphragm pressure ratio suggests.' });
+    var Q = +r.uniform(5, 50).toFixed(1);
+    qs.push({ q: 'A fictional ideal gas (γ = 1.4) releases heat Q = q/(p₁v₁) = ' + Q + '. Compute the Chapman–Jouguet Mach number.', a: mCJ(Q, 1.4), l: '02.2', why: 'Tangency of the Rayleigh line to the reactive Hugoniot: M_CJ = √(H+1) + √H with H = (γ² − 1)Q/(2γ).' });
+    var host = U.$('#chQ'); host.innerHTML = '';
+    qs.forEach(function (q, n) { host.appendChild(U.el('div', { class: 'qcard' }, '<div><b>Q' + (n + 1) + '.</b> ' + q.q + '</div><input type="number" step="any" id="ca' + n + '">')); });
+    locked = level === 'Advanced' || level === 'Expert';
+    U.$('#chSubmit').disabled = false; this.disabled = true;
+  };
+  U.$('#chSubmit').onclick = function () {
+    var tol = TOL[level], ok = 0, dec = [], miss = [];
+    var links = { '01.3': 'lessons/stage-01/lesson-03', '01.4': 'lessons/stage-01/lesson-04', '02.2': 'lessons/stage-02/lesson-02' };
+    qs.forEach(function (q, n) {
+      var v = parseFloat(U.$('#ca' + n).value), e = Math.abs(v - q.a) / Math.abs(q.a), good = isFinite(v) && e <= tol; if (good) ok++;
+      dec.push('Q' + (n + 1) + ': ' + (isFinite(v) ? U.fmt(v, 4) : '—') + ' vs ' + U.fmt(q.a, 4) + (good ? ' ✓' : ' ✗'));
+      if (!good) miss.push('Q' + (n + 1) + ': ' + q.why + ' <a target="_top" href="' + EOD.COURSE + links[q.l] + '">' + q.l + '</a>');
+    });
+    locked = false;
+    EOD.debrief.show({ title: 'Shock & detonation challenge', seed: seed, level: level,
+      scores: [{ label: 'Within ±' + (tol * 100) + '%', value: 100 * ok / qs.length, note: ok + ' / ' + qs.length }],
+      observed: qs.map(function (q, n) { return 'Q' + (n + 1) + ': ' + q.q; }), decided: dec, missed: miss.length ? miss : ['Nothing.'],
+      uncertainty: ['Ideal-gas, single-γ models ignore dissociation and variable heat capacity — errors grow with shock strength.', 'The one-γ CJ model is a teaching model; real detonation products need equilibrium chemistry (e.g. Caltech Shock & Detonation Toolbox).'],
+      reasoning: ['Always sanity-check limits: M → 1 recovers acoustics; density ratio must stay below (γ+1)/(γ−1); reflection factor between 2 and 8.', 'In a shock tube, the transmitted shock is set by p*, not by the diaphragm ratio — energy is shared with the rarefaction.'],
+      physics: ['Rankine–Hugoniot conservation across discontinuities', 'Riemann problem wave structure (rarefaction · contact · shock)', 'Chapman–Jouguet tangency and the ZND von Neumann spike'],
+      engineering: ['Exact Riemann solvers are the building block of Godunov-type CFD codes used in blast engineering.', 'Numerical diffusion smears discontinuities — resolution studies are mandatory.'],
+      links: [{ href: EOD.COURSE + 'lessons/stage-01/lesson-03', text: '01.3 Waves → shocks' }, { href: EOD.COURSE + 'lessons/stage-01/lesson-04', text: '01.4 Reflection' }, { href: EOD.COURSE + 'lessons/stage-02/lesson-02', text: '02.2 Deflagration vs detonation' }],
+      onClose: function () { U.$('#chStart').disabled = false; U.$('#chSubmit').disabled = true; seed = Math.floor(Math.random() * 1e9); }
+    });
+  };
+
+  window.addEventListener('resize', redraw);
+  resetTube(); redraw(); loop();
+})();
+</script>
+</body>
+</html>
