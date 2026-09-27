@@ -1,9 +1,9 @@
 # Stage 7 gate · EOD decision-making
 
-Covers [07.1](lessons/stage-07/lesson-01.md) and [07.2](lessons/stage-07/lesson-02.md). Work
-without the lessons open; show units, state assumptions, and say what your answer *cannot* tell
-you. All incidents, numbers and items are fictional; losses are in loss units (LU) and yields in
-abstract yield units (YU).
+Covers [07.1](lessons/stage-07/lesson-01.md), [07.2](lessons/stage-07/lesson-02.md) and
+[07.3](lessons/stage-07/lesson-03.md). Work without the lessons open; show units, state
+assumptions, and say what your answer *cannot* tell you. All incidents, numbers and items are
+fictional; losses are in loss units (LU) and yields in abstract yield units (YU).
 
 <div class="callout boundary">
 
@@ -115,6 +115,36 @@ shielded from both items, not the usual entrance; rationale recorded."
 (c) Outcome bias: decisions must be judged on the belief and information available at the time.
 With $p$ above threshold and a second report, the exposure accepted was not justified; a benign
 outcome is what happens most of the time even with poor decisions (07.1 §3).
+
+</details>
+
+## Problem 5 · Intervene or manage (mathematical + conceptual)
+
+A fictional item is believed present. Leaving it under managed presence, the cordon can be held
+imperfectly ($\lambda_c = 0.04\,\text{day}^{-1}$) and the item may be unstable
+($\lambda_s = 0.06\,\text{day}^{-1}$) over a horizon $T = 6$ days; a leave-it event would expose
+$N_L = 40$ people at $v_L = 0.15$. The best available manned means carries an intervention risk
+$q_{\text{int}} = 0.35$ and would expose $N_I = 2$ at $v_I = 0.5$.
+
+(a) Compute the threshold $q^{\star} = (1-e^{-(\lambda_c+\lambda_s)T})\,N_L v_L/(N_I v_I)$ and decide
+intervene or manage. (b) A remote means (2-day lead time) would cut $q_{\text{int}}$ to 0.08 and
+$N_I$ to 0.2; compare intervening now with waiting-then-acting. (c) State one indicator that would
+push you to *hands-off even though people could reach the item*, and name the model term it changes.
+
+<details class="answer"><summary>Answer — then reveal</summary>
+
+(a) $1-e^{-0.10\cdot6}=1-e^{-0.6}=0.451$; $q^{\star}=0.451\cdot(40\cdot0.15)/(2\cdot0.5)=0.451\cdot6=2.71$.
+Since $q_{\text{int}}=0.35<2.71$, intervening beats leaving on these numbers (the public-exposure
+asymmetry dominates).
+(b) Intervene now: $0.35\cdot2\cdot0.5=0.35$. Wait-then-act: leave 2 days
+$(1-e^{-0.10\cdot2})\cdot40\cdot0.15=0.181\cdot6=1.086$, plus remote intervention
+$0.08\cdot0.2\cdot0.5=0.008$ → ≈ 1.09. Here the leave-while-waiting harm (imperfect cordon, unstable
+item, large $N_L$) exceeds intervening now, so **act now with the manned means** — instability makes
+delay expensive. (Halving $\lambda_s$ flips this.)
+(c) e.g. a confirmed anti-handling / victim-operation concern → raises $q_{\text{int,min}}$ toward 1
+(possibly above $q^{\star}$); or "no viable remote means" → raises $N_I, v_I$ and lowers $q^{\star}$.
+Either can make hands-off correct while $\lambda_c$ stays positive: you hold people back as well as
+you can and accept the residual contact risk because every approach is worse.
 
 </details>
 

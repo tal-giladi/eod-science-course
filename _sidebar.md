@@ -65,6 +65,7 @@
   - [Stage 7 overview](lessons/stage-07/README.md)
   - [07.1 · Decisions under uncertainty](lessons/stage-07/lesson-01.md)
   - [07.2 · Incident management: the conceptual framework](lessons/stage-07/lesson-02.md)
+  - [07.3 · Neutralisation and the decision not to intervene](lessons/stage-07/lesson-03.md)
   - [Stage 7 gate assessment](assessments/stage-07.md)
 - **8 · Forensics & post-blast investigation**
   - [Stage 8 overview](lessons/stage-08/README.md)
