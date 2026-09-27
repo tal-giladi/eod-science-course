@@ -316,6 +316,7 @@
   };
 
   window.addEventListener('resize', function () { update(); drawField(); drawProbes(); });
+  var qs = U.param('scene', null); if (qs && U.$('#scene').querySelector('[value=' + qs + ']')) U.$('#scene').value = qs;
   buildScene(); update(); drawField(); drawProbes(); tick();
 })();
 </script>

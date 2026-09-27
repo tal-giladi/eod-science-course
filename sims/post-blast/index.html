@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sim E · Post-Blast Investigation</title>
+<link rel="stylesheet" href="../common/sim.css">
+<style>
+  .layout { grid-template-columns: 1fr 340px; }
+  #scene { cursor: crosshair; }
+  .tools button.active { border-color: var(--accent); color: var(--accent); }
+  .ev { font-size: 12px; }
+  @media (max-width: 1100px) { .layout { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="layout">
+  <div class="panel">
+    <h2>Scene (top-down, fictional plaza) <span class="hint" id="clock"></span></h2>
+    <div class="row tools" id="tools">
+      <button data-tool="search" class="active">search (drag)</button>
+      <button data-tool="inspect">inspect evidence</button>
+      <button data-tool="measure">tape measure</button>
+      <button data-tool="seat">place seat hypothesis</button>
+      <button id="sweep" class="danger">scene-safety assessment</button>
+      <label><input type="checkbox" id="overlay"> analysis overlays</label>
+    </div>
+    <canvas id="scene"></canvas>
+    <div class="hint" id="measureOut">Search reveals evidence cell by cell (1 min per 4 m × 4 m cell). Evidence must be photographed and marked before collection.</div>
+  </div>
+  <div class="panel">
+    <h2>Selected evidence</h2>
+    <div id="evPanel" class="ev"><span class="hint">Use "inspect" and click a revealed item.</span></div>
+    <h2 style="margin-top:10px">Evidence log / chain of custody</h2>
+    <div class="log" id="custody" style="max-height:170px"></div>
+    <h2 style="margin-top:10px">Reconstruction</h2>
+    <div class="kv" id="hyp"></div>
+    <div class="row"><label>seat uncertainty radius</label><input type="range" id="hr" min="1" max="20" step="0.5" value="5"><span class="mono" id="hrv">5 m</span></div>
+    <div class="row"><label>abstract yield estimate (YU)</label><input type="number" id="hw" step="any" value="" style="width:90px"></div>
+    <div class="row"><label>yield factor uncertainty ×/÷</label><input type="number" id="hwf" step="any" value="2" style="width:70px"></div>
+    <div class="eq" id="refcard"></div>
+    <div class="row"><button class="primary" id="finish">Submit reconstruction → debrief</button></div>
+  </div>
+</div>
+<script src="../common/eod.js"></script>
+<script src="../common/blast.js"></script>
+<script>
+(function () {
+  'use strict';
+  var U = EOD.util, B = BLAST, level;
+  var diff = EOD.ui.difficultySelect(function (v) { location.href = location.pathname + '?level=' + v; });
+  level = diff.value;
+  EOD.ui.header('E', 'Post-Blast Investigation', 'scene safety · search · document · reconstruct as an inverse problem', [U.el('span', { class: 'hint' }, 'difficulty'), diff]);
+  var seed = EOD.seedFromUrl(), R = EOD.rng(seed);
+  var WW = 80, WH = 50, CELL = 4, NCX = WW / CELL, NCY = WH / CELL;
+  var LV = { Beginner: { time: 400, noiseDir: 8, overlays: true }, Intermediate: { time: 320, noiseDir: 14, overlays: true }, Advanced: { time: 260, noiseDir: 20, overlays: false }, Expert: { time: 220, noiseDir: 28, overlays: false } }[level];
+  if (!LV.overlays) { U.$('#overlay').disabled = true; U.$('#overlay').parentElement.title = 'not available at ' + level; }
+
+  // ---------------------------------------------------------- ground truth
+  var buildings = [[0, 0, 26, 12], [30, 0, 24, 10], [58, 0, 22, 14], [0, 38, 20, 12], [24, 40, 30, 10], [60, 36, 20, 14], [0, 16, 8, 18], [72, 18, 8, 14]];
+  function inB(x, y, m) { m = m || 0; return buildings.some(function (b) { return x > b[0] - m && x < b[0] + b[2] + m && y > b[1] - m && y < b[1] + b[3] + m; }); }
+  var seat; do { seat = { x: R.uniform(18, 62), y: R.uniform(17, 33) }; } while (inB(seat.x, seat.y, 3));
+  var W = Math.exp(R.uniform(Math.log(0.8), Math.log(12))); // abstract yield units
+  var SURF = 1.8; // surface-burst yield factor
+  function psAt(x, y) { var r = Math.max(0.5, Math.hypot(x - seat.x, y - seat.y)); return B.kgOverpressureRatio(r / Math.cbrt(W * SURF)) * B.P0; }
+  function losBlocked(x0, y0, x1, y1) { for (var k = 1; k < 40; k++) { var t = k / 40, px = x0 + (x1 - x0) * t, py = y0 + (y1 - y0) * t; if (inB(px, py, -0.3)) return true; } return false; }
+  // windows along facades facing the plaza
+  var windows = [];
+  buildings.forEach(function (b, bi) {
+    var faces = [[b[0], b[1] + b[3], b[0] + b[2], b[1] + b[3], 0, 1], [b[0], b[1], b[0] + b[2], b[1], 0, -1], [b[0], b[1], b[0], b[1] + b[3], -1, 0], [b[0] + b[2], b[1], b[0] + b[2], b[1] + b[3], 1, 0]];
+    faces.forEach(function (f) {
+      var len = Math.hypot(f[2] - f[0], f[3] - f[1]), n = Math.floor(len / 3);
+      for (var i = 0; i < n; i++) {
+        var t = (i + 0.5) / n, x = f[0] + (f[2] - f[0]) * t, y = f[1] + (f[3] - f[1]) * t, ox = x + f[4] * 0.6, oy = y + f[5] * 0.6;
+        if (ox < 0 || oy < 0 || ox > WW || oy > WH || inB(ox, oy, 0)) continue;
+        var thr = Math.exp(R.normal(Math.log(5), 0.35)); // kPa, window-to-window variability
+        var p = psAt(ox, oy), facing = (seat.x - ox) * f[4] + (seat.y - oy) * f[5] > 0, blocked = losBlocked(seat.x, seat.y, ox, oy);
+        var load = blocked ? 0.35 * p : facing ? B.reflectedOverpressure(p) : 0.8 * p;
+        windows.push({ x: ox, y: oy, nx: f[4], ny: f[5], broken: load > thr, thr: thr, load: load });
+      }
+    });
+  });
+  // fragments: radial throw, stopped by buildings (abstract range model)
+  var frags = [], Rmax = 26 * Math.cbrt(W);
+  for (var i = 0; i < 70; i++) {
+    var a = R.uniform(0, 2 * Math.PI), d = Rmax * Math.pow(R.uniform(0.02, 1), 0.8), x = seat.x, y = seat.y, stepN = 60;
+    for (var k = 1; k <= stepN; k++) { var nx = seat.x + Math.cos(a) * d * k / stepN, ny = seat.y + Math.sin(a) * d * k / stepN; if (nx < 0.5 || ny < 0.5 || nx > WW - 0.5 || ny > WH - 0.5 || inB(nx, ny, 0.3)) break; x = nx; y = ny; }
+    frags.push({ kind: 'fragment', x: x, y: y, size: R.pick(['small', 'small', 'medium', 'large']), id: 'F' + i });
+  }
+  // displaced street furniture: direction away from seat with noise, if dynamic pressure large enough
+  var furniture = [];
+  for (var j = 0; j < 22; j++) {
+    var fx, fy; do { fx = R.uniform(10, 70); fy = R.uniform(14, 36); } while (inB(fx, fy, 1));
+    var p2 = psAt(fx, fy), q = B.dynamicPressure(p2), moved = q > 0.8 && !losBlocked(seat.x, seat.y, fx, fy), dir = Math.atan2(fy - seat.y, fx - seat.x) + R.normal(0, LV.noiseDir * Math.PI / 180);
+    furniture.push({ kind: R.pick(['bench', 'litter bin', 'planter', 'bicycle', 'sign']), x: fx, y: fy, moved: moved, dir: dir, dist: moved ? Math.min(6, 0.8 * Math.sqrt(q)) : 0, id: 'D' + j });
+  }
+  var seatMark = { kind: 'seat damage zone', x: seat.x + R.normal(0, 0.4), y: seat.y + R.normal(0, 0.4), id: 'S0' };
+  var collapseZone = { x: R.pick([13, 42, 69]), y: 12, r: 6 }; // damaged facade: falling-debris risk
+  var evidence = frags.concat(furniture.filter(function (f) { return f.moved; }), [seatMark]);
+
+  // ---------------------------------------------------------- state
+  var searched = new Uint8Array(NCX * NCY), clock = 0, swept = false, sweptBeforeEntry = null, enteredCollapse = 0, tool = 'search', sel = null;
+  var docs = {}, log = [], hyp = null, measureP = null, markerN = 0;
+  function cellIdx(x, y) { return Math.floor(y / CELL) * NCX + Math.floor(x / CELL); }
+  function revealed(e) { return searched[cellIdx(e.x, e.y)]; }
+
+  U.$('#sweep').onclick = function () { if (swept) return; swept = true; if (sweptBeforeEntry === null) sweptBeforeEntry = true; clock += 20; note('Scene-safety assessment done: secondary-hazard search, utilities isolated, structural check. Damaged facade identified (falling-debris exclusion marked).'); draw(); };
+  U.$('#tools').querySelectorAll('button[data-tool]').forEach(function (b) { b.onclick = function () { tool = b.dataset.tool; U.$('#tools').querySelectorAll('button[data-tool]').forEach(function (x) { x.classList.toggle('active', x === b); }); measureP = null; }; });
+  U.$('#hr').oninput = function () { U.$('#hrv').textContent = this.value + ' m'; draw(); };
+  U.$('#overlay').onchange = draw;
+
+  var cv = U.$('#scene'), dragging = false;
+  function toWorld(e) { var r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) / r.width * WW, y: (e.clientY - r.top) / r.height * WH }; }
+  cv.addEventListener('mousedown', function (e) { var p = toWorld(e); dragging = true; handle(p, true); });
+  cv.addEventListener('mousemove', function (e) { if (dragging && tool === 'search') handle(toWorld(e), false); });
+  window.addEventListener('mouseup', function () { dragging = false; });
+  function handle(p, isClick) {
+    if (tool === 'search') {
+      if (sweptBeforeEntry === null) { sweptBeforeEntry = false; note('<span style="color:var(--yellow)">You entered the scene before any scene-safety assessment.</span>'); }
+      var k = cellIdx(p.x, p.y); if (k < 0 || k >= searched.length || searched[k] || inB(p.x, p.y, 0)) return;
+      searched[k] = 1; clock += 1;
+      if (Math.hypot(p.x - collapseZone.x, p.y - collapseZone.y) < collapseZone.r && !swept) enteredCollapse++;
+      draw(); return;
+    }
+    if (!isClick) return;
+    if (tool === 'inspect') {
+      var best = null, bd = 1.5; evidence.forEach(function (e) { if (!revealed(e)) return; var d = Math.hypot(e.x - p.x, e.y - p.y); if (d < bd) { bd = d; best = e; } });
+      windows.forEach(function (w) { if (!revealed(w)) return; var d = Math.hypot(w.x - p.x, w.y - p.y); if (d < bd) { bd = d; best = w; } });
+      sel = best; panel(); draw(); return;
+    }
+    if (tool === 'measure') { if (!measureP) { measureP = p; U.$('#measureOut').textContent = 'Tape: first point set'; } else { U.$('#measureOut').textContent = 'Tape: ' + Math.hypot(p.x - measureP.x, p.y - measureP.y).toFixed(2) + ' m'; clock += 1; measureP = null; } return; }
+    if (tool === 'seat') { hyp = p; draw(); hypPanel(); }
+  }
+  function note(m) { var d = U.el('div', null, '<span class="t">T+' + clock + 'm</span>' + m); U.$('#custody').insertBefore(d, U.$('#custody').firstChild); }
+  function panel() {
+    var e = sel, el = U.$('#evPanel');
+    if (!e) { el.innerHTML = '<span class="hint">Nothing selected.</span>'; return; }
+    var isWin = e.broken !== undefined, st = docs[e.id || ('W' + windows.indexOf(e))] || {};
+    var id = e.id || ('W' + windows.indexOf(e)); e.id = id;
+    var desc = isWin ? 'Window on facade (normal ' + (e.nx ? (e.nx > 0 ? 'E' : 'W') : (e.ny > 0 ? 'S' : 'N')) + '): <b>' + (e.broken ? 'BROKEN — glass thrown ' + (e.load > 0 ? 'inward' : '') : 'intact') + '</b>' :
+      e.kind === 'fragment' ? 'Metal fragment, ' + e.size + '. Position (' + e.x.toFixed(1) + ', ' + e.y.toFixed(1) + ')' :
+      e.kind === 'seat damage zone' ? 'Localised severe ground damage and deposits — candidate seat area.' :
+      e.kind + ' displaced ≈ ' + e.dist.toFixed(1) + ' m, movement direction ' + ((e.dir * 180 / Math.PI + 360) % 360).toFixed(0) + '° (from +x, clockwise on screen)';
+    el.innerHTML = '<div><b>' + id + '</b> — ' + desc + '</div><div class="row">' +
+      '<button id="ph"' + (st.photo ? ' disabled' : '') + '>photograph in place</button>' +
+      '<button id="mk"' + (st.marker ? ' disabled' : '') + '>place marker</button>' +
+      (isWin ? '' : '<button id="co"' + (st.collected ? ' disabled' : '') + '>collect &amp; package</button>') + '</div>' +
+      (isWin ? '' : '<div class="row"><input type="text" id="cdesc" placeholder="description for the custody record" style="width:100%"></div>') +
+      '<div class="hint">' + (st.photo ? '✓ photographed ' : '') + (st.marker ? '✓ marker #' + st.marker + ' ' : '') + (st.collected ? '✓ collected' : '') + '</div>';
+    docs[id] = st;
+    U.$('#ph').onclick = function () { st.photo = clock; clock += 1; note(id + ' photographed in place' + (st.collected ? ' <span style="color:var(--yellow)">(after collection — context lost)</span>' : '')); panel(); };
+    U.$('#mk').onclick = function () { st.marker = ++markerN; clock += 1; note(id + ' marker #' + st.marker + ' placed'); panel(); draw(); };
+    if (!isWin) U.$('#co').onclick = function () {
+      var txt = (U.$('#cdesc').value || '').trim();
+      st.collected = clock; st.desc = txt; st.orderOk = !!(st.photo && st.marker); clock += 2;
+      note(id + ' collected by Investigator-1, bag ' + id + '-' + (markerN + 100) + (txt ? ', "' + U.esc(txt) + '"' : ' <span style="color:var(--yellow)">(no description)</span>') + (st.orderOk ? '' : ' <span style="color:var(--yellow)">(not photographed/marked first)</span>'));
+      panel(); draw();
+    };
+  }
+  function hypPanel() {
+    U.$('#hyp').innerHTML = [['seat hypothesis', hyp ? '(' + hyp.x.toFixed(1) + ', ' + hyp.y.toFixed(1) + ')' : 'not placed'], ['time used', clock + ' / ' + LV.time + ' min'],
+      ['cells searched', Array.prototype.reduce.call(searched, function (a, b) { return a + b; }, 0) + ' / ' + searched.length], ['items documented', Object.keys(docs).filter(function (k) { return docs[k].photo; }).length]]
+      .map(function (r) { return '<span class="k">' + r[0] + '</span><span>' + r[1] + '</span>'; }).join('');
+    U.$('#clock').textContent = '· T+' + clock + ' min';
+  }
+  // reference card: glass-breakage threshold ↔ scaled distance
+  var Zg = (function () { var lo = 1, hi = 200; for (var k = 0; k < 60; k++) { var m = 0.5 * (lo + hi); if (B.kgOverpressureRatio(m) * B.P0 > 5) lo = m; else hi = m; } return 0.5 * (lo + hi); })();
+  U.$('#refcard').textContent = 'Reference card (course data, abstract units)\n' +
+    'Median window breakage ≈ 5 kPa (window-to-window spread ≈ ×/÷1.4)\n' +
+    'Free-air curve: p_s = 5 kPa at Z ≈ ' + Zg.toFixed(1) + ' m·YU^-1/3\n' +
+    'Surface event: effective yield ≈ 1.8 W\n' +
+    'Facing windows see reflected pressure (≈ 2× at this level).';
+
+  // ---------------------------------------------------------- drawing
+  function draw() {
+    var g = EOD.hidpi(cv, Math.round((cv.clientWidth || 700) * WH / WW)), c = g.ctx, s = g.w / WW;
+    c.fillStyle = '#1a1d22'; c.fillRect(0, 0, g.w, g.h);
+    c.strokeStyle = '#20252c'; for (var x = 0; x < WW; x += CELL) { c.beginPath(); c.moveTo(x * s, 0); c.lineTo(x * s, g.h); c.stroke(); } for (var y = 0; y < WH; y += CELL) { c.beginPath(); c.moveTo(0, y * s); c.lineTo(g.w, y * s); c.stroke(); }
+    buildings.forEach(function (b) { c.fillStyle = '#3a4250'; c.fillRect(b[0] * s, b[1] * s, b[2] * s, b[3] * s); });
+    if (swept) { c.strokeStyle = 'rgba(250,204,21,.8)'; c.setLineDash([5, 4]); c.beginPath(); c.arc(collapseZone.x * s, collapseZone.y * s, collapseZone.r * s, 0, 7); c.stroke(); c.setLineDash([]); c.fillStyle = '#facc15'; c.font = '10px monospace'; c.fillText('falling-debris exclusion', (collapseZone.x - 5) * s, (collapseZone.y + collapseZone.r + 2) * s); }
+    // fog over unsearched cells
+    for (var cy = 0; cy < NCY; cy++) for (var cx = 0; cx < NCX; cx++) if (!searched[cy * NCX + cx]) { c.fillStyle = 'rgba(8,10,14,.82)'; c.fillRect(cx * CELL * s, cy * CELL * s, CELL * s + 0.5, CELL * s + 0.5); }
+    windows.forEach(function (w) { if (!revealed(w)) return; c.fillStyle = w.broken ? '#f87171' : '#60a5fa'; c.fillRect(w.x * s - 3, w.y * s - 3, 6, 6); });
+    furniture.forEach(function (f) { if (!revealed(f)) return; c.fillStyle = '#9fb0c6'; c.fillRect(f.x * s - 3, f.y * s - 3, 6, 6);
+      if (f.moved) { c.strokeStyle = '#facc15'; c.beginPath(); c.moveTo(f.x * s, f.y * s); c.lineTo((f.x + Math.cos(f.dir) * f.dist) * s, (f.y + Math.sin(f.dir) * f.dist) * s); c.stroke(); } });
+    frags.forEach(function (f) { if (!revealed(f)) return; c.fillStyle = '#d6deea'; var r = f.size === 'large' ? 3 : f.size === 'medium' ? 2.2 : 1.5; c.beginPath(); c.arc(f.x * s, f.y * s, r, 0, 7); c.fill(); });
+    if (revealed(seatMark)) { c.fillStyle = 'rgba(40,30,25,.9)'; c.beginPath(); c.arc(seatMark.x * s, seatMark.y * s, 1.4 * s, 0, 7); c.fill(); c.strokeStyle = '#6b4f3a'; c.stroke(); }
+    Object.keys(docs).forEach(function (k) { var d = docs[k]; if (!d.marker) return; var e = evidence.concat(windows).find(function (x) { return x.id === k; }); if (!e) return; c.fillStyle = '#facc15'; c.font = 'bold 10px monospace'; c.fillText('#' + d.marker, e.x * s + 4, e.y * s - 4); });
+    if (U.$('#overlay').checked) {
+      furniture.forEach(function (f) { if (!revealed(f) || !f.moved) return; c.strokeStyle = 'rgba(250,204,21,.25)'; c.beginPath(); c.moveTo(f.x * s, f.y * s); c.lineTo((f.x - Math.cos(f.dir) * 60) * s, (f.y - Math.sin(f.dir) * 60) * s); c.stroke(); });
+      var fr = frags.filter(revealed); if (fr.length > 4) { var mx = fr.reduce(function (a, f) { return a + f.x; }, 0) / fr.length, my = fr.reduce(function (a, f) { return a + f.y; }, 0) / fr.length; c.strokeStyle = '#a78bfa'; c.beginPath(); c.arc(mx * s, my * s, 5, 0, 7); c.stroke(); c.fillStyle = '#a78bfa'; c.fillText('fragment centroid', mx * s + 7, my * s); }
+    }
+    if (hyp) { var hr = +U.$('#hr').value; c.strokeStyle = '#22d3ee'; c.beginPath(); c.arc(hyp.x * s, hyp.y * s, hr * s, 0, 7); c.stroke(); c.beginPath(); c.moveTo(hyp.x * s - 6, hyp.y * s); c.lineTo(hyp.x * s + 6, hyp.y * s); c.moveTo(hyp.x * s, hyp.y * s - 6); c.lineTo(hyp.x * s, hyp.y * s + 6); c.stroke(); }
+    c.fillStyle = '#7d8ba0'; c.font = '10px monospace'; c.fillText('10 m', 4 * s, (WH - 1.5) * s); c.fillRect(4 * s, (WH - 1) * s, 10 * s, 2);
+    hypPanel();
+  }
+
+  // ---------------------------------------------------------- debrief
+  U.$('#finish').onclick = function () {
+    if (!hyp) { alert('Place a seat hypothesis first.'); return; }
+    var hw = parseFloat(U.$('#hw').value), hwf = Math.max(1.05, parseFloat(U.$('#hwf').value) || 2), hr = +U.$('#hr').value;
+    var err = Math.hypot(hyp.x - seat.x, hyp.y - seat.y), within = err <= hr;
+    // seat score: accuracy and calibration (an honest radius that contains the truth, tight if possible)
+    var seatScore = within ? U.clamp(100 - 3 * hr, 40, 100) : U.clamp(50 - 5 * (err - hr), 0, 50);
+    var wErr = isFinite(hw) && hw > 0 ? Math.abs(Math.log(hw / W)) : Infinity, wWithin = wErr <= Math.log(hwf);
+    var yieldScore = !isFinite(wErr) ? 0 : wWithin ? U.clamp(100 - 25 * Math.log(hwf) / Math.log(2) + 25, 40, 100) : U.clamp(50 - 40 * (wErr - Math.log(hwf)), 0, 50);
+    var items = Object.keys(docs).filter(function (k) { return docs[k].collected; });
+    var ordered = items.filter(function (k) { return docs[k].orderOk; }).length, described = items.filter(function (k) { return docs[k].desc; }).length;
+    var photoed = Object.keys(docs).filter(function (k) { return docs[k].photo; }).length;
+    var doc = items.length ? 100 * (0.5 * ordered / items.length + 0.3 * described / items.length + 0.2 * Math.min(1, photoed / 8)) : (photoed ? 30 : 0);
+    var safety = 100 - (sweptBeforeEntry ? 0 : 50) - Math.min(40, enteredCollapse * 10);
+    var frac = Array.prototype.reduce.call(searched, function (x, y) { return x + y; }, 0) / searched.length;
+    var eff = U.clamp(100 * (1 - Math.max(0, clock - LV.time) / LV.time) * (clock <= LV.time ? 1 : 0.7) * Math.min(1, 2 * frac), 0, 100);
+    var broken = windows.filter(function (w) { return w.broken; }), revBroken = broken.filter(revealed), farBroken = revBroken.map(function (w) { return Math.hypot(w.x - seat.x, w.y - seat.y); });
+    var Rg = farBroken.length ? Math.max.apply(null, farBroken) : NaN;
+    EOD.debrief.show({ title: 'Post-blast reconstruction', seed: seed, level: level,
+      scores: [{ label: 'Seat location', value: seatScore, note: 'error ' + err.toFixed(1) + ' m vs your radius ' + hr + ' m' }, { label: 'Yield estimate', value: yieldScore, note: isFinite(hw) ? 'you ' + hw + ' YU ×/÷' + hwf : 'no estimate' },
+        { label: 'Documentation & custody', value: doc, note: ordered + '/' + items.length + ' collected in the correct order' }, { label: 'Scene safety', value: U.clamp(safety, 0, 100) }, { label: 'Time', value: eff, note: clock + ' / ' + LV.time + ' min' }],
+      observed: ['Searched ' + Array.prototype.reduce.call(searched, function (a, b) { return a + b; }, 0) + ' cells; revealed ' + frags.filter(revealed).length + ' fragments, ' + furniture.filter(function (f) { return f.moved && revealed(f); }).length + ' displaced objects, ' + revBroken.length + ' broken and ' + windows.filter(function (w) { return !w.broken && revealed(w); }).length + ' intact windows.',
+        'Seat damage zone ' + (revealed(seatMark) ? 'found' : 'not found') + '.'],
+      decided: ['Seat hypothesis (' + hyp.x.toFixed(1) + ', ' + hyp.y.toFixed(1) + ') ± ' + hr + ' m.', 'Yield ' + (isFinite(hw) ? hw + ' YU ×/÷ ' + hwf : 'not estimated') + '.', 'Scene-safety assessment ' + (swept ? (sweptBeforeEntry ? 'before entry' : 'after you had already entered') : 'never done') + '.'],
+      missed: [].concat(swept && sweptBeforeEntry ? [] : ['Scene safety first: secondary devices, structural collapse, utilities and fire precede evidence. You ' + (swept ? 'entered before assessing.' : 'never assessed.')],
+        enteredCollapse ? ['You searched inside the falling-debris zone ' + enteredCollapse + ' time(s) before it was assessed.'] : [],
+        ordered < items.length ? [(items.length - ordered) + ' item(s) collected before being photographed and marked in place: position and context are then unrecoverable for reconstruction and court.'] : [],
+        within ? [] : ['True seat (' + seat.x.toFixed(1) + ', ' + seat.y.toFixed(1) + ') lay outside your stated uncertainty.'],
+        !isFinite(hw) || !wWithin ? ['True abstract yield was ' + W.toFixed(2) + ' YU (effective surface yield ' + (W * SURF).toFixed(2) + ').'] : []),
+      uncertainty: ['Displacement directions carried ±' + LV.noiseDir + '° noise; fragments were stopped by buildings (truncated ranges); window thresholds varied ×/÷1.4 and shadowed windows saw less load.',
+        'Windows give a bound, not a value: the farthest broken window you found was at ' + (isFinite(Rg) ? Rg.toFixed(1) + ' m' : '—') + '. With Z ≈ ' + Zg.toFixed(1) + ' for 5 kPa, W_eff ≈ (R/Z)³ ⇒ W ≈ ' + (isFinite(Rg) ? (Math.pow(Rg / Zg, 3) / SURF).toFixed(2) : '—') + ' YU — but reflection, shielding and threshold spread make this a ×/÷2 estimate at best.'],
+      reasoning: ['Reconstruction is an inverse problem: several independent evidence types (displacement vectors, fragment distribution, breakage boundary, seat damage) should agree; where they disagree, the model assumptions are what you revisit.',
+        'State uncertainty honestly: a tight but wrong seat estimate is worse than a wider correct one.', 'Document before you disturb: photograph, mark, measure, then collect — each item gets a custody record from the moment it is seized.'],
+      physics: ['Hopkinson–Cranz scaling inverted: the radius at which a known damage threshold is crossed scales as W^(1/3), so yield ∝ R³ — small radius errors triple in yield.', 'Reflected pressure on facing windows vs shielded windows behind buildings (04.2).'],
+      engineering: ['Back-projection of displacement vectors is a least-squares line-intersection problem (08.2); the fragment centroid is biased where buildings truncate throws.'],
+      links: [{ href: EOD.COURSE + 'lessons/stage-08/lesson-01', text: '08.1 The post-blast scene' }, { href: EOD.COURSE + 'lessons/stage-08/lesson-02', text: '08.2 Reconstruction as an inverse problem' },
+        { href: EOD.COURSE + 'lessons/stage-04/lesson-02', text: '04.2 Reflection & shielding' }, { href: EOD.COURSE + 'case-studies/cs07-boston-2013', text: 'Case study: Boston 2013' }]
+    });
+    // reveal truth
+    var g = EOD.hidpi(cv), c = g.ctx, s = g.w / WW;
+    c.strokeStyle = '#4ade80'; c.lineWidth = 2; c.beginPath(); c.arc(seat.x * s, seat.y * s, 6, 0, 7); c.stroke(); c.lineWidth = 1;
+    c.strokeStyle = 'rgba(74,222,128,.35)'; c.setLineDash([3, 4]); c.beginPath(); c.arc(seat.x * s, seat.y * s, Zg * Math.cbrt(W * SURF) * s, 0, 7); c.stroke(); c.setLineDash([]);
+  };
+  window.addEventListener('resize', draw);
+  draw(); hypPanel();
+})();
+</script>
+</body>
+</html>
