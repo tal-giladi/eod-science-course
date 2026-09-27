@@ -100,3 +100,31 @@ what is empirical vs derived. Distinguish established facts from simplifications
 ## Style
 Precise, dense, professional; no filler; no emojis; British or American spelling consistently
 within a file. Use tables for comparisons. Prefer concrete numbers. Explain *why*.
+
+## Programming projects (projects/pNN-slug/)
+```text
+projects/pNN-slug/
+  README.md            Goal · Background (link lessons) · Requirements · API (signatures) · Input/Output ·
+                       Constraints · Expected behaviour · Test cases (what tests check) · Milestones ·
+                       Extension challenges · Hints (in <details>) · How to run
+  starter/<module>.py  full API with docstrings; bodies raise NotImplementedError (keep small helpers
+                       that are not the learning goal implemented)
+  solution/<module>.py reference solution (same API)
+  tests/test_<module>.py pytest suite
+```
+- The module name must be unique across the repo (e.g. `blastwave.py`, `sensornoise.py`).
+- Tests select the implementation like this (copy exactly):
+  ```python
+  import os, sys, pathlib
+  _ROOT = pathlib.Path(__file__).resolve().parents[1]
+  sys.path.insert(0, str(_ROOT / ("solution" if os.environ.get("EOD_SOLUTION") else "starter")))
+  import blastwave as mod  # noqa: E402
+  ```
+- Run from repo root: `python -m pytest projects/pNN-slug` (learner) and
+  `EOD_SOLUTION=1 python -m pytest projects/pNN-slug` (must pass — verify it on this machine with
+  `set EOD_SOLUTION=1 && py -m pytest projects/pNN-slug` in cmd, or `EOD_SOLUTION=1 py -m pytest ...` in bash).
+- Dependencies: numpy, scipy, matplotlib, pytest. OpenCV/PyTorch only in P09 and only in optional
+  parts guarded by `pytest.importorskip`. Tests must run in < 30 s total per project, deterministic seeds.
+- Tests check behaviour and invariants (conservation, known analytic cases, consistency checks like
+  NEES, optimality vs brute force on small cases), not implementation details.
+- Fiction/safety rules apply: abstract yields, fictional objects.

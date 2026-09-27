@@ -37,7 +37,7 @@ from real training pathways is in [research-synthesis.md](research-synthesis.md)
 | 7 | EOD decision-making | 07.1–07.2 | Advanced | decision theory, VOI, POMDP intuition | Sim A, Sim F, P12 | 14 |
 | 8 | Forensics & post-blast investigation | 08.1–08.3 | Advanced | inverse problems, photogrammetry, Bayesian reconstruction | Sim E | 18 |
 | 9 | AI & computer vision for EOD | 09.1–09.6 | Advanced→Expert | deep learning, calibration, conformal prediction, info gain | P09, P10, P12 | 48 |
-| 10 | Case studies & professional practice | CS-1…CS-8 | All | — | — | 16 |
+| 10 | Case studies & professional practice | CS-1…CS-9 | All | — | — | 16 |
 | — | Capstones | C1–C4 | Expert | all | full stack | 60–120 |
 
 Total ≈ **350–400 hours** (a serious part-time year).
@@ -112,7 +112,7 @@ Total ≈ **350–400 hours** (a serious part-time year).
 - **09.6** Trustworthy deployment: adversarial robustness, explainability, edge inference, human-in-the-loop design, false-positive management, test & evaluation.
 
 ### Stage 10 — Case studies & professional practice
-Researched historical case studies (see [case-studies](../case-studies/index.md)) placed after the
+Nine researched historical case studies (see [case-studies](case-studies/index.md)) placed after the
 stage whose concepts they exercise.
 
 ### Capstones

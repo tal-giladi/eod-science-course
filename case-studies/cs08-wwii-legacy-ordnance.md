@@ -26,7 +26,7 @@ construction. German officials find **more than 2,000 tons of unexploded bombs e
 
 ### Frankfurt am Main, 29 August – 3 September 2017
 
-Construction workers on a site near Goethe University's Westend campus found a British
+Construction workers on a site near Goethe University found a British
 "blockbuster" air mine of the HC 4000 type. Its mass is reported as **1.4 t** (Smithsonian) or
 **1.8 t** (PBS/AP; France 24). The city ordered an evacuation of about **1.5 km radius** (PBS
 reports "about a mile") on Sunday 3 September. About **60,000 people** left, the largest
@@ -34,7 +34,7 @@ evacuation in post-war Germany. The zone included **two hospitals**, from which 
 and intensive-care patients were moved, care homes, the opera and the Bundesbank. More than
 1,000 emergency workers took part. Some residents **refused to leave**, which delayed the work.
 Officials warned that people could be removed by force. The state ordnance-disposal service
-(Kampfmittelräumdienst) made the bomb safe that day (PBS/AP; France 24; research file 03, C4).
+(Kampfmittelräumdienst) made the bomb safe that day (PBS/AP; France 24; Smithsonian).
 Koblenz had evacuated about 21,000 people for another bomb the day before (PBS/AP).
 
 ### London City Airport, 11–13 February 2018
@@ -170,17 +170,18 @@ more people displaced.
 
 ## Technological developments that followed
 
-- **Digitised aerial-photo archives and GIS** for suspect-area mapping, and commercial
-  aerial-photo evaluation services (Bezirksregierung Düsseldorf; Luftbilddatenbank).
-- **Machine learning on historical imagery** to detect craters and possible unexploded-bomb
-  entry holes. This extends change-detection and object-detection methods from
-  [09.1](lessons/stage-09/lesson-01.md) to archival imagery.
-- **Better geophysics and data fusion** (magnetometry, EM, GPR) for pre-construction survey
-  ([05.6](lessons/stage-05/lesson-06.md)).
-- **CIRIA C785** (UK), a newer UXO risk-management guide for the marine environment that
-  complements C681 (CIRIA).
-- **Public alerting** through smartphone warning apps and cell broadcast, which improves reach
-  and speed during evacuations.
+- **Large, systematically used aerial-photo archives** for suspect-area mapping. NRW's
+  bomb-disposal service cites about 330,000 Allied images (Bezirksregierung Düsseldorf).
+- **Remote sensing and AI** methods developed in mine action for survey (GICHD & ICRC, 2021)
+  are natural candidates for archival imagery, for example detecting craters and possible
+  entry holes. This is an application of the detection methods in
+  [09.1](lessons/stage-09/lesson-01.md), with the domain-shift problems of
+  [09.3](lessons/stage-09/lesson-03.md).
+- **Geophysics and data fusion** (magnetometry, EM, GPR) for pre-construction survey
+  ([05.2](lessons/stage-05/lesson-02.md), [05.6](lessons/stage-05/lesson-06.md)).
+- **CIRIA C785** (UK, August 2019), *UXO risk management guide for land-based projects*, which
+  updates the C681 approach and covers the life of a site from land transaction to demolition
+  (CIRIA).
 
 ## Discussion questions
 
@@ -245,5 +246,5 @@ confused with people who *will not* leave.
 | London City Airport closed due to WWII bomb | The Points Guy (citing AP) | 12 Feb 2018 | https://thepointsguy.com/news/london-city-airport-closed-ww2-bomb/ |
 | Auswertung von Luftbildern (evaluation of wartime aerial photographs) | Bezirksregierung Düsseldorf (NRW state authority) | accessed 2026 | https://www.brd.nrw.de/themen/ordnung-sicherheit/kampfmittelbeseitigung/auswertung-von-luftbildern |
 | C681 Unexploded ordnance (UXO): a guide for the construction industry | CIRIA (K. Stone et al.) | Jul 2009 | https://www.ciria.org/CIRIA/CIRIA/Item_Detail.aspx?iProductCode=C681 |
-| C785 Unexploded ordnance (UXO) risk management guide for land-based projects | CIRIA | 2019 | https://www.ciria.org/ItemDetail?iProductCode=C785&Category=BOOK&WebsiteKey=3f18c87a-d62b-4eca-8ef4-9b09309c1c91 |
-| Research file 03, case C4/C5 (source notes) | This course | 2026 | research/03-detection-forensics-sources.md |
+| C785 Unexploded ordnance (UXO) risk management guide for land-based projects | CIRIA | Aug 2019 | https://www.ciria.org/ItemDetail?iProductCode=C785&Category=BOOK&WebsiteKey=3f18c87a-d62b-4eca-8ef4-9b09309c1c91 |
+| Webinar Report: The Use of Remote Sensing and Artificial Intelligence in the Mine Action Sector | GICHD and ICRC | Apr 2021 | https://www.gichd.org/fileadmin/uploads/gichd/Publications/ICRC_GICHD_Webinar_Report_-_The_Use_of_Remote_Sensing_and_Artificial_Intelligence_in_the_Mine_Action_Sector.pdf |
