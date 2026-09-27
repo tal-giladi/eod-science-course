@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>EOD Science &amp; Technology</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
+  <meta name="description" content="A graduate-level, simulation-heavy self-study program on the science, engineering, robotics, sensing, AI and decision-making behind Explosive Ordnance Disposal — for an engineer learning entirely through software, mathematics and research.">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsify@4/lib/themes/vue.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <link rel="stylesheet" href="assets/course.css">
+</head>
+<body>
+  <div id="app"></div>
+  <script src="assets/progress.js"></script>
+  <script>
+    window.$docsify = {
+      name: 'EOD Science & Technology',
+      repo: 'https://github.com/tal-giladi/eod-science-course',
+      loadSidebar: true,
+      subMaxLevel: 0,
+      auto2top: true,
+      maxLevel: 4,
+      alias: { '/.*/_sidebar.md': '/_sidebar.md' },
+      search: {
+        placeholder: 'Search the course...',
+        noData: 'No results.',
+        depth: 3
+      },
+      copyCode: { buttonText: 'Copy', errorText: 'Error', successText: 'Copied' },
+      count: { countable: true },
+      mermaidConfig: { querySelector: '.mermaid' },
+      markdown: {
+        renderer: {
+          code: function (code, lang) {
+            if (lang === 'mermaid') {
+              return '<div class="mermaid">' + code.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div>';
+            }
+            return this.origin.code.apply(this, arguments);
+          }
+        }
+      },
+      plugins: [
+        function (hook) {
+          // Shield math from the markdown parser (it eats "\\", "\," and "_{...}").
+          var stash = [];
+          var TOKEN = /(```[\s\S]*?```|~~~[\s\S]*?~~~)|(`[^`\n]*`)|(\$\$[\s\S]+?\$\$)|(\$(?!\s)[^$\n]+?(?<![\s\\])\$)/g;
+          hook.beforeEach(function (content) {
+            stash = [];
+            return content.replace(TOKEN, function (m, fence, code, display, inline) {
+              if (fence || code) return m;
+              stash.push(m);
+              return 'KATEXSTASH' + (stash.length - 1) + 'END';
+            });
+          });
+          hook.afterEach(function (html) {
+            return html.replace(/KATEXSTASH(\d+)END/g, function (_, i) {
+              return stash[+i].replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            });
+          });
+          hook.doneEach(function () {
+            if (window.renderMathInElement) {
+              document.querySelectorAll('.markdown-section').forEach(function (el) {
+                window.renderMathInElement(el, {
+                  delimiters: [
+                    { left: '$$', right: '$$', display: true },
+                    { left: '$', right: '$', display: false }
+                  ],
+                  ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+                  throwOnError: false
+                });
+              });
+            }
+            if (window.mermaid) {
+              try { window.mermaid.run({ querySelector: '.markdown-section .mermaid' }); } catch (e) {}
+            }
+          });
+        },
+        window.EODProgressPlugin
+      ]
+    }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    if (window.mermaid) {
+      var dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      window.mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'neutral', securityLevel: 'loose' });
+    }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/docsify@4"></script>
+  <script src="https://cdn.jsdelivr.net/npm/docsify/lib/plugins/search.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/docsify-copy-code@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/docsify-count/dist/countable.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-python.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-bash.min.js"></script>
+</body>
+</html>
