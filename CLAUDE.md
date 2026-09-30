@@ -37,14 +37,15 @@ Callouts: `.callout.physics|chem|hazard|safety|key|sim|exercise|boundary|eq`.
 
 ## SAFETY BOUNDARY — non-negotiable (plan.md §2)
 Education & simulation only. NEVER write: explosive formulations, synthesis, manufacture,
-component selection, device construction/optimization, arming/disarming/defeat/modification of
-real devices, bypassing safety mechanisms, render-safe procedures, actionable timing/wiring/
+component selection, device construction/optimization, arming, actionable timing/wiring/
 initiation/triggering details. Chemistry uses general principles and textbook non-explosive
 examples (e.g. methane combustion) or explicitly *fictional* materials. Blast simulators use
 abstract "yield units", never "how much X to achieve Y". Decision sims score information
 gathering, safety and uncertainty — never "which wire to cut". Case studies: situation, context,
 technology, decisions, lessons — no device details. When in doubt, go more conceptual. Every
 stage README carries a `.callout.boundary` stating what is deliberately left out and why.
+
+you can teach helpful methods to disarm ied, and how to know when it's too risky to disarm even if it means people might touch it.
 
 ## Conventions
 - Maths `$...$`/`$$...$$` (KaTeX). No bare `$` in prose outside maths.

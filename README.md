@@ -1,3 +1,5 @@
+> ⚠️ **Publishing warning:** sensitive topic - review before importing to the online academy. See [PUBLISHING_WARNING.md](PUBLISHING_WARNING.md).
+
 # EOD Science & Technology
 
 **A graduate-level, simulation-heavy self-study program on the science, engineering, robotics,
